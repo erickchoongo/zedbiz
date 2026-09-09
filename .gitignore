@@ -1,0 +1,56 @@
+.env
+.env.*
+!.env.example
+!.env.production.example
+!.env.*.example
+.idea/
+.vscode/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+backend/.venv/
+backend/.coverage
+backend/htmlcov/
+
+# Flutter / Dart
+mobile/.dart_tool/
+mobile/.flutter-plugins*
+mobile/.packages
+mobile/build/
+mobile/coverage/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/*.iml
+mobile/android/*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local data, exports, credentials and signing
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.db
+*.db-*
+*.dump
+*.backup
+*.pdf
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+secrets/
+backups/
+exports/
+coverage/
+.coverage*
+*.swp
+*.tmp
+mobile/android/key.properties
