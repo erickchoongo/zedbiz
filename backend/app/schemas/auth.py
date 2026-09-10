@@ -59,13 +59,13 @@ class LoginRequest(BaseModel):
 class RefreshRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    refresh_token: SecretStr
+    refresh_token: SecretStr = Field(min_length=1, max_length=4096)
 
 
 class LogoutRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    refresh_token: SecretStr
+    refresh_token: SecretStr = Field(min_length=1, max_length=4096)
 
 
 class TokenResponse(BaseModel):

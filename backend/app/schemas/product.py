@@ -16,6 +16,8 @@ def _exact_decimal(value: object, *, places: int, label: str) -> Decimal:
         raise ValueError(f"{label} must be a valid decimal") from exc
     if not result.is_finite():
         raise ValueError(f"{label} must be finite")
+    if abs(result) >= (Decimal('1e10') if places == 2 else Decimal('1e15')):
+        raise ValueError(f'{label} exceeds supported precision')
     quantum = Decimal(1).scaleb(-places)
     if result.quantize(quantum) != result:
         raise ValueError(f"{label} supports at most {places} decimal places")

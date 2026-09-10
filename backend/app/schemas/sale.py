@@ -14,7 +14,9 @@ def _decimal(value: object, *, places: int, label: str) -> Decimal:
         result = Decimal(str(value))
     except (InvalidOperation, ValueError) as exc:
         raise ValueError(f"{label} must be a valid decimal") from exc
-    if not result.is_finite() or result.quantize(Decimal(1).scaleb(-places)) != result:
+    if not result.is_finite() or abs(result) >= (Decimal('1e10') if places == 2 else Decimal('1e15')):
+        raise ValueError(f'{label} exceeds supported precision')
+    if result.quantize(Decimal(1).scaleb(-places)) != result:
         raise ValueError(f"{label} supports at most {places} decimal places")
     return result
 

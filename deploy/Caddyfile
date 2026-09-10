@@ -1,0 +1,32 @@
+{
+    email {$ACME_EMAIL}
+}
+
+(security) {
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy no-referrer
+        -Server
+    }
+}
+
+{$API_DOMAIN} {
+    import security
+    request_body {
+        max_size 256KB
+    }
+    reverse_proxy api:8000
+}
+
+{$WEB_DOMAIN} {
+    import security
+    header Cross-Origin-Opener-Policy same-origin
+    header Cross-Origin-Embedder-Policy require-corp
+    # No restrictive CSP until tested against Flutter CanvasKit/worker loading.
+    # Authentication and business data are not served by this static host.
+    root * /srv/web
+    try_files {path} /index.html
+    file_server
+}

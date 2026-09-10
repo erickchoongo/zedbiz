@@ -1,0 +1,104 @@
+name: zedbiz-pilot
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-environment: &environment
+  APP_ENV: production
+  DATABASE_URL: ${DATABASE_URL:?Set application DATABASE_URL}
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+  CORS_ORIGINS: ${CORS_ORIGINS:?Set explicit HTTPS CORS_ORIGINS}
+  TRUSTED_HOSTS: ${TRUSTED_HOSTS:?Set TRUSTED_HOSTS}
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+  REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+  DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-5}
+  DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-10}
+  DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
+  WEB_CONCURRENCY: "1"
+  RATE_LIMIT_API: ${RATE_LIMIT_API:-600}
+  RATE_LIMIT_LOGIN: ${RATE_LIMIT_LOGIN:-30}
+  RATE_LIMIT_ACCOUNT: ${RATE_LIMIT_ACCOUNT:-8}
+  RATE_LIMIT_REGISTER: ${RATE_LIMIT_REGISTER:-5}
+  RATE_LIMIT_REFRESH: ${RATE_LIMIT_REFRESH:-60}
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [database]
+    restart: unless-stopped
+    logging: *logging
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  api:
+    image: zedbiz-api:${IMAGE_TAG:-pilot}
+    build: ./backend
+    environment: *environment
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, "8000", --workers, "1", --no-access-log, --proxy-headers, --forwarded-allow-ips, "172.30.9.10"]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [database, edge]
+    depends_on:
+      db: {condition: service_healthy}
+    restart: unless-stopped
+    logging: *logging
+  bootstrap:
+    image: zedbiz-api:${IMAGE_TAG:-pilot}
+    profiles: [ops]
+    environment:
+      ADMIN_DATABASE_URL: ${ADMIN_DATABASE_URL:?Set ADMIN_DATABASE_URL}
+      DATABASE_URL: ${DATABASE_URL:?Set application DATABASE_URL}
+      MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:?Set MIGRATION_DATABASE_URL}
+    command: [python, ops/bootstrap_database.py]
+    networks: [database]
+    logging: *logging
+  migrate:
+    image: zedbiz-api:${IMAGE_TAG:-pilot}
+    profiles: [ops]
+    environment:
+      <<: *environment
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:?Set MIGRATION_DATABASE_URL}
+    command: [alembic, upgrade, head]
+    networks: [database]
+    logging: *logging
+  proxy:
+    image: caddy:2-alpine
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN}
+      WEB_DOMAIN: ${WEB_DOMAIN:?Set WEB_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${WEB_ROOT:?Set absolute WEB_ROOT}:/srv/web:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      edge: {ipv4_address: 172.30.9.10}
+    restart: unless-stopped
+    logging: *logging
+
+networks:
+  database: {internal: true}
+  edge:
+    ipam:
+      config: [{subnet: 172.30.9.0/24}]
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

@@ -22,6 +22,7 @@ from app.models.enums import DebtStatus
 from app.models.sale import Sale
 from app.models.user import User
 from app.schemas.debt import DebtPaymentCreateRequest
+from app.services.commercial import add_audit
 
 
 ZERO = Decimal("0.00")
@@ -289,6 +290,10 @@ class DebtService:
             debt.settled_at = None
         self.db.add(payment)
         try:
+            self.db.flush()
+            add_audit(self.db, actor_user_id=actor.id, business_id=business_id,
+                      action='debt.repayment_recorded', entity_type='debt_payment',
+                      entity_id=payment.id, metadata={'debt_id': str(debt.id)})
             self.db.commit()
             self.db.refresh(payment)
         except IntegrityError as exc:

@@ -221,3 +221,7 @@ Voided sales and voided expenses do not contribute to active dashboard and repor
 Milestone 8 adds persistent Drift/SQLite caching, durable paid-sale/expense capture, foreground sync with explicit conflict review, and local receipt PDF sharing/export. PostgreSQL remains authoritative. See [offline synchronization](docs/offline-sync.md) for the scope, policies and verification commands. Customer Credit, repayments, stock administration and voids remain online-only.
 
 See the [Milestone 8 report](docs/milestone-8-report.md) for the change inventory, executed checks, platform limitations and exact local PowerShell commands.
+
+## Milestone 9
+
+Milestone 9 adds controlled-pilot deployment and security hardening, PostgreSQL backup/restore procedures, production configuration checks, and offline/concurrency stress verification. See the [Milestone 9 report](docs/milestone-9-report.md) for results and remaining deployment requirements. Start with the [deployment guide](docs/deployment.md), [disaster recovery guide](docs/disaster-recovery.md), [operations runbook](docs/operations-runbook.md) and [pilot checklist](docs/pilot-checklist.md). No Milestone 10 features are included.

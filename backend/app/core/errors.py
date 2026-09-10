@@ -14,7 +14,7 @@ def register_error_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         errors: list[dict[str, object]] = []
         for original in exc.errors():
-            error = dict(original)
+            error = {key: original[key] for key in ('type', 'loc', 'msg') if key in original}
             location = {str(part) for part in error.get("loc", ())}
             if location & _SENSITIVE_FIELDS:
                 error["input"] = "[redacted]"

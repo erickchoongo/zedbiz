@@ -48,5 +48,5 @@ def update_business(
     access: Annotated[BusinessAccess, Depends(require_owner_business_profile_write_access)],
     db: Annotated[Session, Depends(get_db)],
 ) -> BusinessResponse:
-    business = BusinessService(db).update(access.business, request)
+    business = BusinessService(db).update(access.business, request, access.membership.user_id)
     return _response(BusinessWithRole(business=business, role=access.membership.role))

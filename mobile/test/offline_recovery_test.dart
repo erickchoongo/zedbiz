@@ -22,6 +22,30 @@ import 'offline_sync_test.dart' as fixture;
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
+    'rate limiting preserves a queued write and retries the same intent',
+    () async {
+      final db = LocalDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      await fixture.seed(db);
+      final server = fixture.Server();
+      final api = fixture.client(db, server);
+      await api.postJson(
+        '/api/v1/businesses/b/sales',
+        fixture.sale('throttled-intent'),
+      );
+      server.disconnected = false;
+      server.reject = 429;
+      await api.syncPendingOperations('b', manual: true);
+      final pending = (await db.operations('u', 'b')).single;
+      expect(pending.state, SyncState.pending);
+      expect(pending.nextRetry, isNotNull);
+      server.reject = null;
+      await api.syncPendingOperations('b', manual: true);
+      expect((await db.operations('u', 'b')).single.state, SyncState.synced);
+      expect(server.deductions, 1);
+    },
+  );
+  test(
     'full catalogue pagination reaches item 101 and searches offline',
     () async {
       final db = LocalDatabase(NativeDatabase.memory());

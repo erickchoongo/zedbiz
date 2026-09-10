@@ -69,7 +69,7 @@ class OfflineClient extends ApiClient {
   bool transient(Object e) =>
       e is TimeoutException ||
       e is http.ClientException ||
-      (e is ApiException && [500, 502, 503, 504].contains(e.statusCode));
+      (e is ApiException && [429, 500, 502, 503, 504].contains(e.statusCode));
   Future<void> requireOnline({
     String message = 'This action requires an internet connection.',
   }) async {

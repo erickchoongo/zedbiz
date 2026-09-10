@@ -10,6 +10,7 @@ from app.models.onboarding_record import OnboardingRecord
 from app.models.sale_counter import SaleCounter
 from app.repositories.businesses import BusinessRepository, BusinessWithRole
 from app.schemas.business import BusinessCreateRequest, BusinessUpdateRequest
+from app.models.audit_log import AuditLog
 
 
 class BusinessService:
@@ -30,6 +31,7 @@ class BusinessService:
             self.db.add(membership)
             self.db.add(OnboardingRecord(business_id=business.id))
             self.db.add(SaleCounter(business_id=business.id, next_value=1))
+            self.db.add(AuditLog(actor_user_id=owner.id, business_id=business.id, action='business.created', entity_type='business', entity_id=business.id, metadata_json={}))
             self.db.commit()
             self.db.refresh(business)
         except Exception:
@@ -40,10 +42,11 @@ class BusinessService:
     def list_for_user(self, user_id: UUID) -> list[BusinessWithRole]:
         return self.businesses.list_for_user(user_id)
 
-    def update(self, business: Business, request: BusinessUpdateRequest) -> Business:
+    def update(self, business: Business, request: BusinessUpdateRequest, actor_id: UUID | None = None) -> Business:
         for field, value in request.model_dump(exclude_unset=True).items():
             setattr(business, field, value)
         try:
+            self.db.add(AuditLog(actor_user_id=actor_id, business_id=business.id, action='business.updated', entity_type='business', entity_id=business.id, metadata_json={'fields': sorted(request.model_fields_set)}))
             self.db.commit()
             self.db.refresh(business)
         except Exception:

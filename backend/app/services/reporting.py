@@ -67,6 +67,8 @@ def resolve_period(
     if date_from is not None and date_to is not None:
         if date_from > date_to:
             raise HTTPException(status_code=422, detail="date_from must be before date_to")
+        if (date_to - date_from).days > 366 or date_to == date.max:
+            raise HTTPException(status_code=422, detail='Report date range must not exceed 367 days')
         start_date, end_date, name = date_from, date_to, "custom"
     else:
         current = ensure_utc(now or utc_now()).astimezone(lusaka_zone()).date()

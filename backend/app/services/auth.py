@@ -19,6 +19,7 @@ from app.core.security import (
 from app.core.time import ensure_utc, utc_now
 from app.models.refresh_session import RefreshSession
 from app.models.user import User
+from app.models.audit_log import AuditLog
 from app.repositories.refresh_sessions import RefreshSessionRepository
 from app.repositories.users import UserRepository
 from app.schemas.auth import LoginRequest, RegisterRequest
@@ -71,6 +72,7 @@ class AuthService:
             raise AuthenticationError
         try:
             bundle = self._issue_token_bundle(user)
+            self.db.add(AuditLog(actor_user_id=user.id, action='session.login', entity_type='user', entity_id=user.id, metadata_json={}))
             self.db.commit()
         except Exception:
             self.db.rollback()
@@ -123,6 +125,7 @@ class AuthService:
             raise AuthenticationError
         if refresh_session.revoked_at is None:
             refresh_session.revoked_at = utc_now()
+            self.db.add(AuditLog(actor_user_id=refresh_session.user_id, action='session.logout', entity_type='user', entity_id=refresh_session.user_id, metadata_json={}))
             self.db.commit()
 
     def _issue_token_bundle(self, user: User) -> TokenBundle:

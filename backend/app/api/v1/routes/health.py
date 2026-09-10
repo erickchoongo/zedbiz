@@ -1,6 +1,7 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from app.core.readiness import check_database
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -17,10 +18,10 @@ def health() -> HealthResponse:
 
 
 @router.get("/ready", response_model=HealthResponse)
-def readiness(db: Annotated[Session, Depends(get_db)]) -> HealthResponse:
+def readiness(request: Request, db: Annotated[Session, Depends(get_db)]) -> HealthResponse:
     try:
-        db.execute(text("SELECT 1"))
-    except SQLAlchemyError as exc:
+        check_database(db, production=request.app.state.settings.app_env in {'production', 'staging'})
+    except (SQLAlchemyError, RuntimeError) as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database is unavailable",

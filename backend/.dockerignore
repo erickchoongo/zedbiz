@@ -6,4 +6,10 @@ __pycache__/
 htmlcov/
 tests/
 .env
+.env.*
+*.log
+*.dump
+*.sqlite*
+*.pdf
+scripts/
 .git/

@@ -1,5 +1,5 @@
 // Only public application assets are cached here. Business data belongs in SQLite.
-const CACHE = 'zedbiz-shell-m8-v1';
+const CACHE = 'zedbiz-shell-m9-v1';
 const CORE = ['index.html', 'flutter_bootstrap.js', 'flutter.js', 'main.dart.js',
   'sqlite3.wasm', 'drift_worker.dart.js', 'assets/AssetManifest.bin.json',
   'assets/FontManifest.json', 'assets/fonts/MaterialIcons-Regular.otf',

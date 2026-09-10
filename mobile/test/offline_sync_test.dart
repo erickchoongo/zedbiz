@@ -96,6 +96,12 @@ class Server {
       final p = jsonDecode(r.body) as Map<String, dynamic>;
       final id = p['client_operation_id'] as String;
       requests.add(id);
+      if (path.endsWith('/reconcile')) {
+        final existing = accepted[id];
+        return existing == null
+            ? json({'detail': 'Operation not found'}, 404)
+            : json(existing);
+      }
       if (reject != null) {
         return json({
           'detail': reject == 409

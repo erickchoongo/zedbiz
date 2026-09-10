@@ -14,7 +14,9 @@ def _money(value: object) -> Decimal:
         result = Decimal(str(value))
     except (InvalidOperation, ValueError) as exc:
         raise ValueError("Amount must be a valid decimal") from exc
-    if not result.is_finite() or result.quantize(Decimal("0.01")) != result:
+    if not result.is_finite() or abs(result) >= Decimal('1e10'):
+        raise ValueError('Amount exceeds supported precision')
+    if result.quantize(Decimal("0.01")) != result:
         raise ValueError("Amount supports at most 2 decimal places")
     if result <= 0:
         raise ValueError("Amount must be greater than zero")

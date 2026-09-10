@@ -73,6 +73,12 @@ class SalesService:
             .order_by(Product.id)
             .with_for_update()
         ).all()
+        # A same-operation request can commit while this transaction waits for
+        # product locks. Reconcile before checking the now-decreased stock.
+        concurrent = self._by_operation(business_id, request.client_operation_id)
+        if concurrent is not None:
+            self._validate_sale_retry(concurrent, fingerprint)
+            return SaleWithPeople(concurrent, concurrent.sold_by.full_name)
         by_id = {product.id: product for product in products}
         if len(by_id) != len(product_ids):
             raise HTTPException(status_code=404, detail="One or more products were not found")
@@ -93,8 +99,12 @@ class SalesService:
                 raise HTTPException(status_code=409, detail=f"Insufficient stock for {product.name}")
             line_subtotal = (product.selling_price * quantity).quantize(MONEY, rounding=ROUND_HALF_UP)
             line_cost = (product.cost_price * quantity).quantize(MONEY, rounding=ROUND_HALF_UP)
+            if line_subtotal >= Decimal('1e10') or line_cost >= Decimal('1e10'):
+                raise HTTPException(status_code=422, detail='Sale line exceeds supported monetary limits')
             subtotal += line_subtotal
             total_cost += line_cost
+            if subtotal >= Decimal('1e10') or total_cost >= Decimal('1e10'):
+                raise HTTPException(status_code=422, detail='Sale total exceeds supported monetary limits')
             line_values.append((product, quantity, line_subtotal, line_cost))
         subtotal = subtotal.quantize(MONEY)
         total_cost = total_cost.quantize(MONEY)
