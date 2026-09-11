@@ -8,6 +8,9 @@ x-logging: &logging
 
 x-environment: &environment
   APP_ENV: production
+  REQUIRE_PRODUCTION: "true"
+  GIT_COMMIT: ${GIT_COMMIT:-unknown}
+  BACKEND_VERSION: ${BACKEND_VERSION:-0.1.0}
   DATABASE_URL: ${DATABASE_URL:?Set application DATABASE_URL}
   JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
   CORS_ORIGINS: ${CORS_ORIGINS:?Set explicit HTTPS CORS_ORIGINS}

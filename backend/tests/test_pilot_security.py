@@ -38,6 +38,21 @@ def test_production_valid_and_missing_secret(monkeypatch):
         Settings(_env_file=None, app_env='production')
 
 
+def test_production_deployment_cannot_run_in_development():
+    with pytest.raises(ValidationError, match='requires APP_ENV=production'):
+        Settings(_env_file=None, app_env='development', require_production=True)
+    assert production(require_production=True).app_env == 'production'
+
+
+@pytest.mark.anyio
+async def test_public_version_only_exposes_release_identity():
+    settings = Settings(_env_file=None, app_env='test', git_commit='abcdef1234567')
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(settings)), base_url='http://test') as client:
+        response = await client.get('/api/v1/health/version')
+    assert response.status_code == 200
+    assert response.json() == {'version': '0.1.0', 'git_commit': 'abcdef1234567', 'environment': 'test'}
+
+
 def test_bounded_limiter_temporary_cooldown():
     clock = [0]
     limiter = WindowLimiter(60, capacity=1, clock=lambda: clock[0])

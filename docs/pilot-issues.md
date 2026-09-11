@@ -1,0 +1,15 @@
+# Pilot issue register
+
+Severity: P0 = data loss/security/financial corruption; P1 = core workflow blocked; P2 = important issue with workaround; P3 = minor UX. External-input blockers are included explicitly; they are not hidden as passing tests. Never include passwords, tokens, private receipts or customer notes.
+
+| ID | Date | Area | Severity | Device | Business | Description | Steps | Expected | Actual | Status | Fix commit |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P1-001 | 2026-09-11 | Deployment | P1 | External browser | Internal pilot | Public deployment inputs missing | Configure DNS/host and open Web/API externally | Verified public HTTPS and production Web/API | Operator has no hosting/domain inputs yet | Blocked on operator | — |
+| P1-002 | 2026-09-11 | Android | P1 | No device attached | Internal pilot | Signing identity and physical phone missing | Build signed APK, install, test offline restart/share | Signed release and physical acceptance evidence | No key.properties, keystore or Android target | Blocked on operator | — |
+| P1-003 | 2026-09-11 | Recovery/alerts | P1 | Production host pending | Internal pilot | Off-host destination and unattended alert/scheduler ownership missing | Recover after host loss; receive external outage alert | Independent restore and actionable alert | Local tooling only; remote inputs unavailable | Blocked on operator | — |
+| P1-004 | 2026-09-11 | Support diagnostics | P2 | Flutter Web | All internal testing | Build identity was not visible to operator | Open More and report installed build | App/build/backend/commit/environment available | Diagnostics screen and safe metadata endpoint added | Implemented; verification in report | See Pilot 1 implementation commit |
+| P1-005 | 2026-09-11 | Navigation | P2 | Chrome | Brown_ent-Tech | Dedicated settings/subscription/account-detail screens absent | Open More after activation | Requested standalone destinations | Existing operational tabs work; these screens are not implemented | Deferred; current features remain accessible, admin workflow available | — |
+| P1-006 | 2026-09-11 | Onboarding | P3 | Chrome | Brown_ent-Tech | Local owner did not know payment confirmation required platform admin | Select UNPAID business | Understand next step to enter app | Only status refresh/switch business shown; legitimate local waiver resolved entry | Documented; owner confirmed dashboard | No application change |
+| P1-007 | 2026-09-11 | Backup retention | P2 | Windows PowerShell 5.1 | Synthetic backup fixtures | JSON catalogue array nested during pipeline assignment | Run retention on 40 synthetic daily archives | Retain daily/weekly copies and prune only managed older archives | Date parsing failed before pruning | Fixed and regression-tested; live backup rerun succeeded | See Pilot 1 implementation commit |
+
+No confirmed P0 is recorded. No measured crash or support-ticket total is inferred from the absence of reports. Record new observations with all fields above; close issues only with executed verification and an actual fix commit.

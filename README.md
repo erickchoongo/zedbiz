@@ -225,3 +225,7 @@ See the [Milestone 8 report](docs/milestone-8-report.md) for the change inventor
 ## Milestone 9
 
 Milestone 9 adds controlled-pilot deployment and security hardening, PostgreSQL backup/restore procedures, production configuration checks, and offline/concurrency stress verification. See the [Milestone 9 report](docs/milestone-9-report.md) for results and remaining deployment requirements. Start with the [deployment guide](docs/deployment.md), [disaster recovery guide](docs/disaster-recovery.md), [operations runbook](docs/operations-runbook.md) and [pilot checklist](docs/pilot-checklist.md). No Milestone 10 features are included.
+
+## Pilot Milestone 1
+
+Pilot preparation adds release diagnostics under More, daily backup/monitoring tooling and a one-business rehearsal. See the [Pilot 1 execution guide](docs/pilot-1-operations.md), [issue register](docs/pilot-issues.md) and [Pilot 1 report](docs/pilot-milestone-1-report.md). Public deployment and physical Android acceptance require the operator's hosting, signing and device inputs; local rehearsal results do not establish those outcomes.

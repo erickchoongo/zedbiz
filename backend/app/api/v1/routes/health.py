@@ -17,6 +17,13 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok")
 
 
+@router.get('/version')
+def version(request: Request) -> dict[str, str]:
+    settings = request.app.state.settings
+    return {'version': settings.backend_version, 'git_commit': settings.git_commit,
+            'environment': settings.app_env}
+
+
 @router.get("/ready", response_model=HealthResponse)
 def readiness(request: Request, db: Annotated[Session, Depends(get_db)]) -> HealthResponse:
     try:

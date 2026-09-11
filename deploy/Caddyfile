@@ -27,6 +27,12 @@
     # No restrictive CSP until tested against Flutter CanvasKit/worker loading.
     # Authentication and business data are not served by this static host.
     root * /srv/web
-    try_files {path} /index.html
-    file_server
+    route {
+        @private path_regexp private (^|/)\.
+        respond @private 404
+        try_files {path} /index.html
+        file_server {
+            hide *.key *.pem *.jks *.keystore *.dump *.backup key.properties
+        }
+    }
 }

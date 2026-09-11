@@ -26,6 +26,9 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "test", "staging", "production"] = "development"
     app_name: str = "ZedBiz API"
+    require_production: bool = False
+    backend_version: str = Field(default='0.1.0', pattern=r'^[0-9]+\.[0-9]+\.[0-9]+$')
+    git_commit: str = Field(default='unknown', pattern=r'^(unknown|[0-9a-f]{7,40})$')
     database_url: str = "postgresql+psycopg://zedbiz:zedbiz@localhost:5432/zedbiz"
     jwt_secret: str = "development-only-secret-change-me"
     access_token_expire_minutes: int = Field(default=15, gt=0)
@@ -56,6 +59,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_security(self) -> "Settings":
+        if self.require_production and self.app_env != 'production':
+            raise ValueError('This deployment requires APP_ENV=production')
         if self.app_env not in {'production', 'staging'}:
             return self
         normalized_secret = self.jwt_secret.strip().lower()

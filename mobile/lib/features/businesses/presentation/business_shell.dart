@@ -1,4 +1,5 @@
 import 'package:zedbiz/core/offline/sync_status_screen.dart';
+import 'package:zedbiz/core/diagnostics/pilot_diagnostics_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:zedbiz/app/app_controller.dart';
 import 'package:zedbiz/features/products/presentation/products_screen.dart';
@@ -175,6 +176,17 @@ class _More extends StatelessWidget {
         leading: const Icon(Icons.swap_horiz),
         title: const Text('Switch business'),
         onTap: controller.showBusinessList,
+      ),
+      ListTile(
+        key: const Key('more-pilot-diagnostics'),
+        leading: const Icon(Icons.info_outline),
+        title: const Text('Pilot diagnostics'),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PilotDiagnosticsScreen(controller: controller),
+          ),
+        ),
       ),
       ListTile(
         leading: const Icon(Icons.logout),
