@@ -4,11 +4,11 @@ Dates: 11–12 September 2026. Scope: repository preparation for Cloudflare Page
 
 ## 1. Git status
 
-Initial checkout was clean; no remote existed. Changes are being committed on a separate preparation branch. Final clean status and build identity are recorded after release verification below. No push was performed.
+Initial checkout was clean; no remote existed. Implementation was committed, then built from a clean checkout. A final documentation-only commit records the verification results and operator command clarifications; the final working tree is checked clean after that commit. No push was performed. Ignore checks covered environment files, credential paths, dumps, SQLite, signing files, generated builds and temporary files; tracked-file checks found no files in the checked secret/data/build patterns. Templates and lockfiles remain included.
 
 ## 2. Branch and HEAD
 
-Started on `pilot/1-readiness` at `630d13dc148e1dd6de35159abfa529e0bc5ac532`. New branch: `pilot/free-deployment`. Implementation commit and final evidence commit will be recorded after the clean-source build; use `git log -2 --oneline` and `git rev-parse HEAD` to identify both.
+Started on `pilot/1-readiness` at `630d13dc148e1dd6de35159abfa529e0bc5ac532`. Final branch: `pilot/free-deployment`. Verified implementation HEAD: **`f7d091f8d857b6388dfdfa132c0570e913cebc03`**, titled `Prepare optional free pilot hosting on Render, Supabase and Pages`. The final HEAD is its documentation-only child, titled `Record free pilot preparation verification and operator steps`; `git log -2 --oneline` and `git rev-parse HEAD` identify that evidence commit without attempting to embed its own hash in itself. The Web artifact embeds the verified implementation HEAD.
 
 ## 3. Files changed
 
@@ -80,11 +80,17 @@ Backend full SQLite suite: **110 passed**. Backend full PostgreSQL 17 suite: **1
 
 ## 15. Flutter analyze
 
-**PASS: No issues found** from `flutter analyze --no-pub`. The initial process completed successfully after a slow startup; a diagnostic retry was also launched before its completion result was retrieved.
+**PASS: No issues found** from `flutter analyze --no-pub`. A diagnostic retry with `--no-version-check` also completed without issues. The initial process completed successfully after a slow startup; neither analyzer run reported source errors.
 
 ## 16. Web build
 
-Pending clean-source release build. With no actual Render URL available, local verification must use the real local development origin, never publish a localhost build or invent a provider endpoint. The operator must rebuild with the actual Render HTTPS origin before upload.
+**PASS:** clean-source `flutter build web --release` through the build helper, Flutter 3.47.1 / Dart 3.13.1, version `1.0.0+1`, source `f7d091f8d857b6388dfdfa132c0570e913cebc03`, request timeout 90 seconds. Output: `mobile/build/web`. The verified command used `-Environment development -ApiUrl http://127.0.0.1:8000` because no actual Render URL exists yet. This is a local verification artifact, not the hosted upload artifact; rebuild with the real HTTPS origin and production environment before uploading.
+
+Artifact checks: **45 files**, largest `canvaskit.wasm` **7,284,349 bytes**, within documented dashboard upload limits. `_headers` exactly matches source, no top-level `404.html` exists, and the expected commit/API origin is present. Existing CupertinoIcons font warning remains nonfatal; it was also recorded in Pilot 1, and no application references to that icon family were found. No dependency was added merely to suppress the warning.
+
+Supplementary installed-Chrome verification used an isolated local profile/server and an external copy of the release assets. The first run passed persistence within a browser session but failed the offline browser-restart queue assertion, followed by a Windows profile-file lock during cleanup. Recompiling the existing storage fixture produced the exact same SHA256 as the reused fixture, ruling out stale fixture code. A diagnostic rerun on unchanged application assets passed `opfsLocks` storage, scope isolation, exact values, durable queue, offline browser-process restart and offline application-shell startup with no page exceptions. A final run using the original, unmodified fixture also passed all these checks and exited successfully. The initial failure is an intermittent local-browser observation, not a resolved application defect; the actual Pages deployment still requires its own durability acceptance.
+
+Automatic approval review rejected the separate attempt to clean up the first temporary Chrome profile, returning only `blocked by policy`. That profile was left alone; the rejected operation was not retried through another mechanism. This does not involve the user's ordinary browser profile or business database. Verification logs are outside Git under `%LOCALAPPDATA%\ZedBiz-Local\free-pilot-*.log`.
 
 ## 17. Manual external-account steps remaining
 
@@ -115,11 +121,11 @@ Push-Location mobile
 flutter test --no-pub
 flutter analyze --no-pub
 Pop-Location
-& .\scripts\build-pilot.ps1 -Target web -Environment development -ApiUrl http://127.0.0.1:8000 -RequestTimeoutSeconds 90
+powershell -NoProfile -ExecutionPolicy RemoteSigned -File .\scripts\build-pilot.ps1 -Target web -Environment development -ApiUrl http://127.0.0.1:8000 -RequestTimeoutSeconds 90
 ```
 
 Keep test environments separate from operator migration credentials and never aim test fixtures at a business database.
 
 ## 20. Verdict
 
-**PENDING final local verification for FREE PILOT DEPLOYMENT PREPARATION.** External deployment is not performed and all remote checklist boxes remain unchecked. This report will be finalized after analyzer, PostgreSQL suite, clean release build and final Git checks. No new feature milestone was started.
+**PASS for FREE PILOT DEPLOYMENT PREPARATION.** Backend SQLite/PostgreSQL suites, Flutter tests, analyzer and clean-source Web release build passed. Existing production deployment files were checked unchanged, and no models, financial rules or new milestone were introduced. External deployment is **NOT PERFORMED**: actual provider connection/TLS, final HTTPS origins, CORS, Pages behavior and end-to-end hosted workflow/backup acceptance remain unchecked in the deployment checklist. This verdict covers repository preparation only.

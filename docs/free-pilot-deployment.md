@@ -147,7 +147,7 @@ uv run python -m app.cli promote-admin --email $adminEmail
 Pop-Location
 ```
 
-Read the interactive confirmation before answering. The command is idempotent, requires an existing user and records an audit entry. There is no public administrator registration endpoint or default password. Ordinary business owners should remain ordinary owners. Log in again as the promoted account and use the existing authenticated platform-admin workflow to confirm/waive onboarding and activate the existing subscription. Select the existing business ID; do not create a second business or insert subscription rows directly. The API routes and request schemas are documented in the existing [onboarding guide](../README.md) and source `backend/app/api/v1/routes/admin.py`.
+Read the interactive confirmation before answering. The command is idempotent, requires an existing user and records an audit entry. There is no public administrator registration endpoint or default password. Ordinary business owners should remain ordinary owners. Log in again as the promoted account and select the **ZedBiz admin** shield icon on the business list (also available under **More → ZedBiz admin** inside a business). Use that existing protected workspace to confirm/waive onboarding and activate the existing subscription. Select the existing business ID; do not create a second business or insert subscription rows directly. The API routes and request schemas are documented in the existing [commercial onboarding section](../README.md) and source `backend/app/api/v1/routes/admin.py`.
 
 ## C. Prepare the Render backend
 
@@ -203,10 +203,10 @@ Push-Location mobile
 flutter pub get --enforce-lockfile
 if ($LASTEXITCODE -ne 0) { throw 'Flutter dependency installation failed' }
 Pop-Location
-& .\scripts\build-pilot.ps1 -Target web -Environment production -ApiUrl $apiUrl -RequestTimeoutSeconds 90
+powershell -NoProfile -ExecutionPolicy RemoteSigned -File .\scripts\build-pilot.ps1 -Target web -Environment production -ApiUrl $apiUrl -RequestTimeoutSeconds 90
 ```
 
-If Flutter is not on PATH, add `-Flutter C:\dev\flutter\bin\flutter.bat` to the last command. The helper invokes `flutter build web --release`, embeds version/build/Git metadata, and supplies `--dart-define=API_BASE_URL=...`, `--dart-define=APP_ENV=production` and `--dart-define=API_REQUEST_TIMEOUT_SECONDS=90`. Only public configuration is compiled. Default development/VPS request timeout remains 15 seconds. Development uses `http://127.0.0.1:8000`; a future custom HTTPS API uses the same `API_BASE_URL` mechanism.
+If Flutter is not on PATH, add `-Flutter C:\dev\flutter\bin\flutter.bat` to the last command. `RemoteSigned` applies only to this child PowerShell process so locally reviewed scripts can run; it does not change the machine policy. The helper invokes `flutter build web --release`, embeds version/build/Git metadata, and supplies `--dart-define=API_BASE_URL=...`, `--dart-define=APP_ENV=production` and `--dart-define=API_REQUEST_TIMEOUT_SECONDS=90`. Only public configuration is compiled. Default development/VPS request timeout remains 15 seconds. Development uses `http://127.0.0.1:8000`; a future custom HTTPS API uses the same `API_BASE_URL` mechanism.
 
 3. Inspect `mobile/build/web`: `index.html`, `_headers`, `flutter_bootstrap.js`, `main.dart.js`, `offline_shell.js`, SQLite worker/WASM and assets must exist. Never upload the locally verified development build with a localhost API.
 4. In Cloudflare, open **Workers & Pages → Create application → Get started → Drag and drop your files** (choose Pages if prompted). Create a project, upload the **contents** of `mobile/build/web` as the supported folder/ZIP, and select **Deploy site**. `index.html` must be at the upload root, not inside an extra `web/` directory. Choose a production deployment, then copy the actual production `https://…pages.dev` URL. No custom domain, Node installation or Cloudflare build command is needed. Dashboard uploads allow up to 1,000 files and 25 MiB per file; do not omit required assets to meet a limit.
@@ -267,7 +267,7 @@ Periodically run the existing guarded restore script against your **local Docker
 ```powershell
 $localEnv = Join-Path $env:LOCALAPPDATA 'ZedBiz-Local\runtime.env'
 $restoreName = 'zedbiz_restore_free_' + (Get-Date -Format 'yyyyMMddHHmmss')
-& .\scripts\restore-postgres.ps1 -EnvFile $localEnv -ComposeFile .\docker-compose.yml -BackupFile $backupFile -RestoreDatabase $restoreName -RemoveAfterVerification
+powershell -NoProfile -ExecutionPolicy RemoteSigned -File .\scripts\restore-postgres.ps1 -EnvFile $localEnv -ComposeFile .\docker-compose.yml -BackupFile $backupFile -RestoreDatabase $restoreName -RemoveAfterVerification
 ```
 
 For other machines supply that machine's actual local Docker env file. Add `-ExpectedCountsFile` with your private count manifest when available; compare the reported migration revision with the recorded head and reconcile financial totals before declaring a drill complete. Restoring a managed `public` schema into a normal local database may require review if unrelated extensions/objects were added; do not edit/drop live hosted objects to fix a drill. Existing VPS backup, scheduled managed backup and disaster recovery tooling is retained. This manual process is only the temporary pilot strategy.
