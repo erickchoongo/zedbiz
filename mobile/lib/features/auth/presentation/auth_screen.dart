@@ -55,6 +55,10 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                if (widget.controller.busy)
+                  const Text(
+                    'Connecting securely. The first request may take a minute; please wait.',
+                  ),
                 TextButton(
                   onPressed: widget.controller.busy ? null : _toggleMode,
                   child: Text(

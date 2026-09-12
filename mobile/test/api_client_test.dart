@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -26,6 +27,56 @@ class MemoryTokenStorage implements TokenStorage {
 }
 
 void main() {
+  test(
+    'slow hosted response waits without retrying or clearing credentials',
+    () async {
+      final storage = MemoryTokenStorage(
+        const StoredTokens(accessToken: 'access', refreshToken: 'refresh'),
+      );
+      var calls = 0;
+      final client = MockClient((request) async {
+        calls++;
+        await Future<void>.delayed(const Duration(milliseconds: 30));
+        return http.Response('{"status":"ok"}', 200);
+      });
+      final api = ApiClient(
+        baseUrl: Uri.parse('https://api.example.test'),
+        tokenStorage: storage,
+        client: client,
+        requestTimeout: const Duration(seconds: 1),
+      );
+      expect((await api.getJson('/api/v1/health'))['status'], 'ok');
+      expect(calls, 1);
+      expect(storage.cleared, false);
+    },
+  );
+
+  test(
+    'timeout remains transient and does not clear refresh credentials',
+    () async {
+      final storage = MemoryTokenStorage(
+        const StoredTokens(accessToken: 'access', refreshToken: 'refresh'),
+      );
+      final response = Completer<http.Response>();
+      var calls = 0;
+      final api = ApiClient(
+        baseUrl: Uri.parse('https://api.example.test'),
+        tokenStorage: storage,
+        client: MockClient((request) {
+          calls++;
+          return response.future;
+        }),
+        requestTimeout: const Duration(milliseconds: 5),
+      );
+      await expectLater(
+        api.getJson('/api/v1/auth/me'),
+        throwsA(isA<TimeoutException>()),
+      );
+      expect(calls, 1);
+      expect(storage.cleared, false);
+      response.complete(http.Response('{}', 200));
+    },
+  );
   test(
     'authenticated client refreshes once and retries with the new access token',
     () async {

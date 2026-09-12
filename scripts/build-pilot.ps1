@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory)][string]$ApiUrl,
     [ValidateSet('web','apk','appbundle')][string]$Target = 'web',
     [ValidateSet('development','production')][string]$Environment = 'production',
-    [string]$Flutter = 'flutter'
+    [string]$Flutter = 'flutter',
+    [ValidateRange(15,120)][int]$RequestTimeoutSeconds = 15
 )
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -18,6 +19,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Cannot identify source commit' }
 if (& git -C $root status --porcelain) { throw 'Commit reviewed changes before creating an identifiable pilot release' }
 $arguments = @('build',$Target,'--release','--no-pub',"--build-name=$version","--build-number=$number","--dart-define=APP_VERSION=$version","--dart-define=APP_BUILD_NUMBER=$number","--dart-define=GIT_COMMIT=$commit","--dart-define=APP_ENV=$Environment","--dart-define=API_BASE_URL=$ApiUrl")
 if ($Target -eq 'web') { $arguments += @('--no-wasm-dry-run','--no-web-resources-cdn') }
+$arguments += "--dart-define=API_REQUEST_TIMEOUT_SECONDS=$RequestTimeoutSeconds"
 Push-Location (Join-Path $root 'mobile')
 try {
     & $Flutter @arguments

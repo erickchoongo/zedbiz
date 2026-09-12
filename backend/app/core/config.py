@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     app_env: Literal["development", "test", "staging", "production"] = "development"
     app_name: str = "ZedBiz API"
     require_production: bool = False
+    database_ssl_required: bool = False
     backend_version: str = Field(default='0.1.0', pattern=r'^[0-9]+\.[0-9]+\.[0-9]+$')
     git_commit: str = Field(default='unknown', pattern=r'^(unknown|[0-9a-f]{7,40})$')
     database_url: str = "postgresql+psycopg://zedbiz:zedbiz@localhost:5432/zedbiz"
@@ -50,6 +51,15 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     max_request_bytes: int = Field(default=262144, ge=1024, le=1048576)
 
+    @field_validator('database_url', mode='before')
+    @classmethod
+    def postgres_driver(cls, value: object) -> object:
+        if isinstance(value, str):
+            for prefix in ('postgres://', 'postgresql://'):
+                if value.startswith(prefix):
+                    return 'postgresql+psycopg://' + value[len(prefix):]
+        return value
+
     @field_validator("cors_origins", "trusted_hosts", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: object) -> object:
@@ -59,6 +69,13 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_security(self) -> "Settings":
+        if self.database_ssl_required:
+            try:
+                ssl_valid = make_url(self.database_url).query.get('sslmode') == 'verify-full'
+            except Exception:
+                ssl_valid = False
+            if not ssl_valid:
+                raise ValueError('Hosted DATABASE_URL requires sslmode=verify-full and a trusted CA certificate')
         if self.require_production and self.app_env != 'production':
             raise ValueError('This deployment requires APP_ENV=production')
         if self.app_env not in {'production', 'staging'}:

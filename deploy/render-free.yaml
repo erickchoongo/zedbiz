@@ -1,0 +1,39 @@
+# Optional Blueprint template. Manual dashboard setup is documented and recommended
+# for the first pilot so real URLs/certificates can be entered before deployment.
+services:
+  - type: web
+    name: zedbiz-free-pilot
+    runtime: python
+    plan: free
+    rootDir: backend
+    autoDeployTrigger: "off"
+    buildCommand: uv sync --frozen --no-dev
+    startCommand: .venv/bin/python ops/start_render.py
+    healthCheckPath: /api/v1/health/ready
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: UV_VERSION
+        value: 0.12.6
+      - key: APP_ENV
+        value: production
+      - key: REQUIRE_PRODUCTION
+        value: "true"
+      - key: DATABASE_SSL_REQUIRED
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: TRUSTED_HOSTS
+        sync: false
+      - key: PGSSLROOTCERT
+        value: /etc/secrets/supabase-ca.crt
+      - key: DB_POOL_SIZE
+        value: "2"
+      - key: DB_MAX_OVERFLOW
+        value: "0"
+      - key: WEB_CONCURRENCY
+        value: "1"

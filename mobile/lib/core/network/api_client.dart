@@ -9,11 +9,18 @@ class ApiClient {
   ApiClient({
     required this.baseUrl,
     required this.tokenStorage,
+    this.requestTimeout = const Duration(
+      seconds: int.fromEnvironment(
+        'API_REQUEST_TIMEOUT_SECONDS',
+        defaultValue: 15,
+      ),
+    ),
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final Uri baseUrl;
   final TokenStorage tokenStorage;
+  final Duration requestTimeout;
   final http.Client _client;
   Future<bool>? _refreshInProgress;
 
@@ -115,7 +122,7 @@ class ApiClient {
       'POST' => _client.post(uri, headers: headers, body: encodedBody),
       'PATCH' => _client.patch(uri, headers: headers, body: encodedBody),
       _ => throw ArgumentError.value(method, 'method'),
-    }.timeout(const Duration(seconds: 15));
+    }.timeout(requestTimeout);
   }
 
   Future<bool> _refreshOnce() {

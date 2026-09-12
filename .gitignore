@@ -54,3 +54,6 @@ coverage/
 *.swp
 *.tmp
 mobile/android/key.properties
+.pgpass
+pgpass.conf
+.pg_service.conf

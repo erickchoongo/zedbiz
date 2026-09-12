@@ -229,3 +229,5 @@ Milestone 9 adds controlled-pilot deployment and security hardening, PostgreSQL 
 ## Pilot Milestone 1
 
 Pilot preparation adds release diagnostics under More, daily backup/monitoring tooling and a one-business rehearsal. See the [Pilot 1 execution guide](docs/pilot-1-operations.md), [issue register](docs/pilot-issues.md) and [Pilot 1 report](docs/pilot-milestone-1-report.md). Public deployment and physical Android acceptance require the operator's hosting, signing and device inputs; local rehearsal results do not establish those outcomes.
+
+The optional free-hosting path uses Render, Supabase PostgreSQL and Cloudflare Pages alongside the retained VPS deployment. Follow the [free pilot setup guide](docs/free-pilot-deployment.md), [deployment checklist](docs/free-pilot-deployment-checklist.md) and [preparation report](docs/free-pilot-preparation-report.md). Provider account setup and deployment remain manual.
