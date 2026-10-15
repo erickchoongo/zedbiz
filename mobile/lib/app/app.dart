@@ -71,7 +71,9 @@ class _ZedBizAppState extends State<ZedBizApp> {
         return switch (controller.status) {
           SessionStatus.starting => const SplashScreen(),
           SessionStatus.signedOut => AuthScreen(controller: controller),
-          SessionStatus.signedIn when controller.adminMode =>
+          SessionStatus.signedIn
+              when controller.adminMode &&
+                  controller.currentUser?.isPlatformAdmin == true =>
             AdminBusinessListScreen(controller: controller),
           SessionStatus.signedIn when controller.selectedBusiness != null =>
             BusinessReadyScreen(

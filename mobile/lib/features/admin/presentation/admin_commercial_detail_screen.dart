@@ -271,6 +271,7 @@ class _AdminCommercialDetailScreenState
     final onboarding = _detail?['onboarding'] as Map<String, dynamic>?;
     final subscription = _detail?['subscription'] as Map<String, dynamic>?;
     final payments = (_detail?['payments'] as List<dynamic>? ?? const []);
+    final history = (_detail?['audit_history'] as List<dynamic>? ?? const []);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.business.name),
@@ -294,6 +295,15 @@ class _AdminCommercialDetailScreenState
                       child: Text(_error!),
                     ),
                   ),
+                _Section(
+                  title: 'Business',
+                  lines: [
+                    'ID: ${widget.business.id}',
+                    'Owner: ${widget.business.ownerName ?? 'Not recorded'}',
+                    'Email: ${widget.business.ownerEmail ?? 'Not recorded'}',
+                    'Phone: ${(_detail?['business'] as Map<String, dynamic>?)?['phone_number'] ?? 'Not recorded'}',
+                  ],
+                ),
                 if (onboarding != null) ...[
                   _Section(
                     title: 'Onboarding',
@@ -301,6 +311,10 @@ class _AdminCommercialDetailScreenState
                       'Fee: ${onboarding['currency']} ${onboarding['fee_amount']}',
                       'Payment: ${onboarding['payment_status']}',
                       'Status: ${onboarding['onboarding_status']}',
+                      'Method: ${onboarding['payment_method'] ?? 'Not recorded'}',
+                      'Paid at: ${_date(onboarding['paid_at'])}',
+                      'Completed: ${_date(onboarding['completed_at'])}',
+                      'Updated: ${_date(onboarding['updated_at'])}',
                       if (onboarding['payment_reference'] != null)
                         'Reference: ${onboarding['payment_reference']}',
                       if (onboarding['notes'] != null)
@@ -360,6 +374,7 @@ class _AdminCommercialDetailScreenState
                       : [
                           'Plan: ${subscription['plan_name']} (${subscription['currency']} ${subscription['plan_price']}/month)',
                           'Status: ${subscription['status']}',
+                          'Started: ${_date(subscription['starts_at'])}',
                           'Period: ${_date(subscription['current_period_start'])} – ${_date(subscription['current_period_end'])}',
                           'Grace deadline: ${_date(subscription['grace_ends_at'])}',
                         ],
@@ -378,7 +393,7 @@ class _AdminCommercialDetailScreenState
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Payment history',
+                  'Subscription payments (${payments.length})',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 8),
@@ -391,7 +406,23 @@ class _AdminCommercialDetailScreenState
                       '${payment['currency']} ${payment['amount']} • ${payment['payment_method']}',
                     ),
                     subtitle: Text(
-                      '${payment['payment_reference']}\n${_date(payment['paid_at'])}',
+                      'Reference: ${payment['payment_reference']}\nPaid: ${_date(payment['paid_at'])} | Recorded: ${_date(payment['created_at'])}\nPeriod: ${_date(payment['period_start'])} - ${_date(payment['period_end'])}',
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                Text(
+                  'Commercial audit history (latest 100)',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                if (history.isEmpty)
+                  const Text('No commercial audit events available.'),
+                for (final event in history.cast<Map<String, dynamic>>())
+                  ListTile(
+                    title: Text(
+                      (event['action'] as String).replaceAll('_', ' '),
+                    ),
+                    subtitle: Text(
+                      '${_date(event['created_at'])} | Actor: ${event['actor_user_id'] ?? 'Unavailable'}',
                     ),
                   ),
               ],

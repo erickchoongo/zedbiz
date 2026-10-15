@@ -160,8 +160,17 @@ class AdminBusinessIdentityResponse(BaseModel):
     timezone: str
 
 
+class AdminCommercialAuditResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    actor_user_id: UUID | None
+    action: str
+    created_at: datetime
+
+
 class AdminCommercialDetailResponse(BaseModel):
     business: AdminBusinessIdentityResponse
     onboarding: OnboardingAdminResponse
     subscription: SubscriptionAdminResponse | None
     payments: list[SubscriptionPaymentResponse]
+    audit_history: list[AdminCommercialAuditResponse] = Field(default_factory=list)

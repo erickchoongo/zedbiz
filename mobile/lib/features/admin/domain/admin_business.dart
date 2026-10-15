@@ -4,6 +4,7 @@ class AdminBusiness {
     required this.name,
     required this.onboardingStatus,
     required this.subscriptionStatus,
+    this.onboardingPaymentStatus = 'UNPAID',
     this.ownerName,
     this.ownerEmail,
     this.paidThrough,
@@ -15,6 +16,7 @@ class AdminBusiness {
     ownerName: json['owner_name'] as String?,
     ownerEmail: json['owner_email'] as String?,
     onboardingStatus: json['onboarding_status'] as String,
+    onboardingPaymentStatus: json['onboarding_payment_status'] as String,
     subscriptionStatus: json['subscription_status'] as String,
     paidThrough: json['paid_through'] == null
         ? null
@@ -26,6 +28,7 @@ class AdminBusiness {
   final String? ownerName;
   final String? ownerEmail;
   final String onboardingStatus;
+  final String onboardingPaymentStatus;
   final String subscriptionStatus;
   final DateTime? paidThrough;
 }

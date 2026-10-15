@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.admin import PlatformAdmin
 from app.db.session import get_db
+from app.models.audit_log import AuditLog
 from app.models.business import Business
 from app.models.business_membership import BusinessMembership
 from app.models.enums import MembershipRole, OnboardingStatus, SubscriptionStatus
@@ -20,6 +21,7 @@ from app.schemas.commercial import (
     AdminBusinessListResponse,
     AdminBusinessSummaryResponse,
     AdminCommercialDetailResponse,
+    AdminCommercialAuditResponse,
     OnboardingAdminResponse,
     OnboardingAdminUpdateRequest,
     PaymentRecordRequest,
@@ -155,6 +157,11 @@ def get_admin_commercial_detail(
         onboarding=OnboardingAdminResponse.model_validate(onboarding),
         subscription=_subscription_response(subscription, plan) if subscription and plan else None,
         payments=[SubscriptionPaymentResponse.model_validate(payment) for payment in payments],
+        audit_history=[AdminCommercialAuditResponse.model_validate(event) for event in db.scalars(
+            select(AuditLog).where(AuditLog.business_id == business_id,
+                AuditLog.entity_type.in_(['onboarding_record', 'subscription', 'subscription_payment']))
+            .order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(100)
+        )],
     )
 
 

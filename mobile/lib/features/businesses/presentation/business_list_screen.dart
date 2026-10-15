@@ -19,11 +19,11 @@ class BusinessListScreen extends StatelessWidget {
       title: const Text('Your businesses'),
       actions: [
         if (controller.currentUser?.isPlatformAdmin == true)
-          IconButton(
+          TextButton.icon(
             key: const Key('open-admin'),
             onPressed: controller.openAdmin,
             icon: const Icon(Icons.admin_panel_settings),
-            tooltip: 'ZedBiz admin',
+            label: const Text('ZedBiz Admin'),
           ),
         IconButton(
           onPressed: controller.busy ? null : controller.logout,

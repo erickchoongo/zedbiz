@@ -450,3 +450,23 @@ def test_business_commercial_creation_rolls_back_when_commit_fails(
     assert db.scalar(select(Business).where(Business.name == "Rollback Business")) is None
     assert db.scalar(select(func.count()).select_from(OnboardingRecord)) == 0
     assert db.scalar(select(func.count()).select_from(BusinessMembership)) == 0
+
+
+async def test_promoted_admin_profile_survives_refresh_and_revocation_is_immediate(client: httpx.AsyncClient, db: Session) -> None:
+    _, tokens, business, admin = await admin_and_business(client, db)
+    me = await client.get('/api/v1/auth/me', headers=auth(tokens['access_token']))
+    assert me.json()['is_platform_admin'] is True
+    refreshed = await client.post('/api/v1/auth/refresh', json={'refresh_token': tokens['refresh_token']})
+    assert refreshed.status_code == 200
+    header = auth(refreshed.json()['access_token'])
+    assert (await client.get('/api/v1/auth/me', headers=header)).json()['is_platform_admin'] is True
+    assert (await client.get('/api/v1/admin/businesses', headers=header)).status_code == 200
+    await complete_onboarding(client, refreshed.json()['access_token'], business['id'])
+    detail = await client.get(f"/api/v1/admin/businesses/{business['id']}/commercial", headers=header)
+    assert detail.status_code == 200
+    assert detail.json()['audit_history']
+    assert all(set(e) == {'id', 'actor_user_id', 'action', 'created_at'} for e in detail.json()['audit_history'])
+    admin.is_platform_admin = False
+    db.commit()
+    assert (await client.get('/api/v1/admin/businesses', headers=header)).status_code == 403
+    assert (await client.get(f"/api/v1/admin/businesses/{business['id']}/commercial", headers=header)).status_code == 403

@@ -114,6 +114,13 @@ class _More extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView(
     children: [
+      if (controller.currentUser?.isPlatformAdmin == true)
+        ListTile(
+          leading: const Icon(Icons.admin_panel_settings),
+          title: const Text('ZedBiz admin'),
+          onTap: controller.openAdmin,
+        ),
+
       ListTile(
         key: const Key('more-expenses'),
         leading: const Icon(Icons.payments_outlined),
@@ -193,12 +200,6 @@ class _More extends StatelessWidget {
         title: const Text('Sign out'),
         onTap: controller.logout,
       ),
-      if (controller.currentUser?.isPlatformAdmin == true)
-        ListTile(
-          leading: const Icon(Icons.admin_panel_settings),
-          title: const Text('ZedBiz admin'),
-          onTap: controller.openAdmin,
-        ),
     ],
   );
 }

@@ -36,14 +36,43 @@ class AdminRepository implements AdminGateway {
       'onboarding_status': ?onboardingStatus,
       'subscription_status': ?subscriptionStatus,
     };
-    final query = parameters.isEmpty
-        ? ''
-        : '?${Uri(queryParameters: parameters).query}';
-    final payload = await apiClient.getJson('/api/v1/admin/businesses$query');
-    return (payload['items'] as List<dynamic>)
-        .cast<Map<String, dynamic>>()
-        .map(AdminBusiness.fromJson)
-        .toList(growable: false);
+    final businesses = <AdminBusiness>[];
+    var page = 1;
+    int? expectedTotal;
+    final ids = <String>{};
+    while (true) {
+      parameters['page'] = '$page';
+      parameters['page_size'] = '100';
+      final query = Uri(queryParameters: parameters).query;
+      final payload = await apiClient.getJson(
+        '/api/v1/admin/businesses?$query',
+      );
+      final total = payload['total'];
+      if (total is! int ||
+          total < 0 ||
+          payload['page'] != page ||
+          payload['page_size'] != 100 ||
+          (expectedTotal != null && total != expectedTotal)) {
+        throw const FormatException(
+          'Invalid or changing admin pagination; retry the listing.',
+        );
+      }
+      expectedTotal = total;
+      final items = (payload['items'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(AdminBusiness.fromJson)
+          .toList();
+      if (items.length > 100 ||
+          items.any((item) => !ids.add(item.id)) ||
+          businesses.length + items.length > total) {
+        throw const FormatException('Invalid or repeated admin page.');
+      }
+      businesses.addAll(items);
+      if (businesses.length >= total) break;
+      if (items.isEmpty) throw StateError('Incomplete business listing');
+      page++;
+    }
+    return businesses;
   }
 
   @override

@@ -41,6 +41,66 @@ CommercialStatus status({
 );
 
 void main() {
+  testWidgets(
+    'business selection exposes named admin entry only to platform admins',
+    (tester) async {
+      for (final isAdmin in [false, true]) {
+        final controller = AppController(
+          authGateway: FakeAuthGateway(
+            sessionAvailable: true,
+            user: UserProfile(
+              id: 'u',
+              email: 'u@example.com',
+              fullName: 'User',
+              phoneNumber: null,
+              isPlatformAdmin: isAdmin,
+            ),
+          ),
+          businessGateway: FakeBusinessGateway(),
+          commercialGateway: FakeCommercialGateway(),
+          adminGateway: FakeAdminGateway(),
+        );
+        await tester.pumpWidget(
+          ZedBizApp(key: UniqueKey(), controller: controller),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const Key('open-admin')),
+          isAdmin ? findsOneWidget : findsNothing,
+        );
+        controller.openAdmin();
+        expect(controller.adminMode, isAdmin);
+      }
+    },
+  );
+
+  testWidgets('More exposes admin workspace only for platform admins', (
+    tester,
+  ) async {
+    for (final isAdmin in [false, true]) {
+      final controller = controllerFor(
+        activeCommercialStatus,
+        user: UserProfile(
+          id: 'u',
+          email: 'u@example.com',
+          fullName: 'User',
+          phoneNumber: null,
+          isPlatformAdmin: isAdmin,
+        ),
+      );
+      await tester.pumpWidget(
+        ZedBizApp(key: UniqueKey(), controller: controller),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('More'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('ZedBiz admin'),
+        isAdmin ? findsOneWidget : findsNothing,
+      );
+    }
+  });
+
   test('money parsing uses exact integer minor units', () {
     expect(Money.parse('79.00', 'ZMW').minorUnits, 7900);
     expect(Money.parse('200.00', 'ZMW').minorUnits, 20000);
@@ -136,6 +196,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ZedBiz Admin'), findsOneWidget);
+    expect(find.text('Registered businesses'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Businesses'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Businesses'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Brown Tech'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Brown Tech'), findsOneWidget);
     expect(find.textContaining('Subscription: ACTIVE'), findsOneWidget);
   });
