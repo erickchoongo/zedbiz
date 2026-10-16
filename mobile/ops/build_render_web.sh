@@ -19,7 +19,7 @@ app_version="${BASH_REMATCH[1]}"
 app_build="${BASH_REMATCH[2]}"
 commit="$(git rev-parse HEAD)"
 flutter build web --release --no-pub --no-wasm-dry-run --no-web-resources-cdn \
-  --dart-define=API_BASE_URL=https://zedbiz-free-pilot.onrender.com \
+  --dart-define=API_BASE_URL=https://zedbiz-backend.onrender.com \
   --dart-define=APP_ENV=production \
   --dart-define=API_REQUEST_TIMEOUT_SECONDS=90 \
   --dart-define="APP_VERSION=$app_version" \
