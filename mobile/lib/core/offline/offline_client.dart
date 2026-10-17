@@ -659,7 +659,7 @@ class OfflineClient extends ApiClient {
       return;
     }
     final lease =
-        '${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 32)}';
+        '${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 30)}';
     if (!await db.acquireLease(user, business, lease)) return;
     syncing = true;
     changed();
