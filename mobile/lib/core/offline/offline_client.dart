@@ -470,7 +470,9 @@ class OfflineClient extends ApiClient {
       await db.enqueue(user, business, type, payload, preview);
     });
     changed();
-    if (online) await syncPendingOperations(business);
+    if (online) {
+      await syncPendingOperations(business, manual: true);
+    }
     final saved = (await db.operation(
       user,
       business,
