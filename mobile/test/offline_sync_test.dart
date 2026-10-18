@@ -1,7 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/native.dart';
+import 'package:zedbiz/app/app_controller.dart';
+import 'package:zedbiz/features/auth/domain/user_profile.dart';
+import 'package:zedbiz/features/businesses/domain/business_summary.dart';
+
+import 'helpers/fakes.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -177,6 +184,227 @@ OfflineClient client(LocalDatabase db, Server server, {Tokens? tokens}) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets('timer automatically retries a pending sale', (tester) async {
+    final db = LocalDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await seed(db);
+
+    final server = Server();
+    final api = client(db, server);
+
+    await api.postJson(
+      '/api/v1/businesses/b/sales',
+      sale('automatic-retry-sale'),
+    );
+
+    final controller = AppController(
+      offline: api,
+      authGateway: FakeAuthGateway(
+        sessionAvailable: true,
+        user: const UserProfile(
+          id: 'u',
+          email: 'owner@example.com',
+          fullName: 'Owner',
+          phoneNumber: null,
+        ),
+      ),
+      businessGateway: FakeBusinessGateway(
+        businesses: [
+          const BusinessSummary(
+            id: 'b',
+            name: 'Shop',
+            role: BusinessRole.owner,
+            currency: 'ZMW',
+            timezone: 'Africa/Lusaka',
+          ),
+        ],
+      ),
+      commercialGateway: FakeCommercialGateway(),
+      adminGateway: FakeAdminGateway(),
+    );
+
+    await controller.initialize();
+
+    // Complete the initial attempt while the server is unavailable.
+    await api.syncPendingOperations('b', refreshAfter: false);
+    expect(server.accepted, isEmpty);
+
+    // Restore the server without triggering a connectivity event.
+    server.disconnected = false;
+
+    // Verify that synchronization is skipped in the background.
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump(const Duration(seconds: 16));
+
+    expect(server.accepted, isEmpty);
+
+    // Verify that synchronization resumes when the app is active.
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(seconds: 16));
+
+    await tester.runAsync(() async {
+      for (var i = 0; i < 40; i++) {
+        final saved = await db.operation('u', 'b', 'automatic-retry-sale');
+        if (saved?.state == SyncState.synced) return;
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+    });
+
+    final saved = await db.operation('u', 'b', 'automatic-retry-sale');
+
+    expect(saved?.state, SyncState.synced);
+    expect(saved?.serverId, 'server-automatic-retry-sale');
+    expect(server.accepted.length, 1);
+
+    // Save another transaction while offline.
+    server.disconnected = true;
+    api.online = false;
+
+    await api.postJson(
+      '/api/v1/businesses/b/expenses',
+      expense('after-logout-expense'),
+    );
+
+    // Log out before connectivity is restored.
+    await controller.logout();
+    server.disconnected = false;
+
+    // The timer must not synchronize after logout.
+    await tester.pump(const Duration(seconds: 16));
+
+    final pendingExpense = await db.operation('u', 'b', 'after-logout-expense');
+
+    expect(pendingExpense?.state, SyncState.pending);
+    expect(server.accepted.containsKey('after-logout-expense'), isFalse);
+
+    controller.dispose();
+  });
+  test('sale confirmation is not blocked by an ongoing refresh', () async {
+    final db = LocalDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await seed(db);
+
+    final server = Server()..disconnected = false;
+    final refreshStarted = Completer<void>();
+    final releaseRefresh = Completer<void>();
+
+    final api = OfflineClient(
+      baseUrl: Uri.parse('http://test'),
+      tokenStorage: Tokens(),
+      db: db,
+      client: MockClient((request) async {
+        if (request.method == 'GET' &&
+            request.url.path == '/api/v1/businesses') {
+          if (!refreshStarted.isCompleted) {
+            refreshStarted.complete();
+          }
+          await releaseRefresh.future;
+        }
+        return server.call(request);
+      }),
+    );
+
+    // Start a synchronization that becomes stuck refreshing data.
+    final backgroundSync = api.syncPendingOperations('b', manual: true);
+
+    await refreshStarted.future.timeout(const Duration(seconds: 3));
+
+    // Submit a new sale while the refresh is still running.
+    final saleFuture = api.postJson(
+      '/api/v1/businesses/b/sales',
+      sale('concurrent-sale'),
+    );
+
+    try {
+      // The sale should confirm without waiting for the stalled refresh.
+      final result = await saleFuture.timeout(
+        const Duration(milliseconds: 500),
+      );
+
+      expect(result['id'], 'server-concurrent-sale');
+      expect(server.accepted.length, 1);
+    } finally {
+      // Always unblock the refresh so the test can clean up safely.
+      releaseRefresh.complete();
+      await backgroundSync;
+      await saleFuture;
+    }
+  });
+  test('confirmed sale does not wait for full data refresh', () async {
+    final db = LocalDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await seed(db);
+
+    final server = Server()..disconnected = false;
+    var refreshRequests = 0;
+    var saleDetailRequests = 0;
+
+    final api = OfflineClient(
+      baseUrl: Uri.parse('http://test'),
+      tokenStorage: Tokens(),
+      db: db,
+      client: MockClient((request) async {
+        if (request.method == 'GET' &&
+            request.url.path == '/api/v1/businesses') {
+          refreshRequests++;
+        }
+        if (request.method == 'GET' &&
+            request.url.path ==
+                '/api/v1/businesses/b/sales/server-fast-confirmation-sale') {
+          saleDetailRequests++;
+        }
+        return server.call(request);
+      }),
+    );
+
+    final result = await api
+        .postJson('/api/v1/businesses/b/sales', sale('fast-confirmation-sale'))
+        .timeout(const Duration(seconds: 3));
+
+    final saved = await db.operation('u', 'b', 'fast-confirmation-sale');
+
+    expect(saved, isNotNull);
+    expect(saved!.state, SyncState.synced);
+    expect(result['id'], 'server-fast-confirmation-sale');
+    expect(result['local_sync_state'], isNull);
+    expect(server.accepted.length, 1);
+    expect(refreshRequests, 0);
+    expect(saleDetailRequests, 0);
+  });
+  test('confirmed expense does not require another network request', () async {
+    final db = LocalDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await seed(db);
+
+    final server = Server()..disconnected = false;
+    var expenseDetailRequests = 0;
+
+    final api = OfflineClient(
+      baseUrl: Uri.parse('http://test'),
+      tokenStorage: Tokens(),
+      db: db,
+      client: MockClient((request) async {
+        if (request.method == 'GET' &&
+            request.url.path ==
+                '/api/v1/businesses/b/expenses/server-fast-expense') {
+          expenseDetailRequests++;
+        }
+        return server.call(request);
+      }),
+    );
+
+    final result = await api
+        .postJson('/api/v1/businesses/b/expenses', expense('fast-expense'))
+        .timeout(const Duration(seconds: 3));
+
+    final saved = await db.operation('u', 'b', 'fast-expense');
+
+    expect(saved?.state, SyncState.synced);
+    expect(result['id'], 'server-fast-expense');
+    expect(result['local_sync_state'], isNull);
+    expect(server.accepted.length, 1);
+    expect(expenseDetailRequests, 0);
+  });
   test(
     'SQLite v1 creation, upsert, exact strings, scope and persistent restart',
     () async {

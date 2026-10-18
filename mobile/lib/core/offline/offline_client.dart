@@ -31,9 +31,12 @@ class OfflineClient extends ApiClient {
   String? selectedBusiness;
   void Function(List<Map<String, dynamic>>)? membershipsVerified;
   Future<void>? _flight;
+  Future<void>? _refreshFlight;
+  String? _queuedRefreshBusiness;
+  String? _activeRefreshBusiness;
   Future<void>? _catalogFlight;
   String? _catalogBusiness;
-  final Map<String, bool> _requested = {};
+  final Map<String, ({bool manual, bool refreshAfter})> _requested = {};
   void changed() => changes.value++;
 
   Future<String> account() async {
@@ -459,6 +462,16 @@ class OfflineClient extends ApiClient {
         );
       }
       if (existing.state == SyncState.synced) {
+        final cached = await db.readCache(
+          user,
+          business,
+          '$path/${existing.serverId}',
+        );
+
+        if (cached?.data is Map) {
+          return Map<String, dynamic>.from(cached!.data as Map);
+        }
+
         return getJson('$path/${existing.serverId}');
       }
       return {...existing.preview, 'local_sync_state': existing.state.name};
@@ -471,7 +484,7 @@ class OfflineClient extends ApiClient {
     });
     changed();
     if (online) {
-      await syncPendingOperations(business, manual: true);
+      await syncPendingOperations(business, manual: true, refreshAfter: false);
     }
     final saved = (await db.operation(
       user,
@@ -479,6 +492,16 @@ class OfflineClient extends ApiClient {
       body['client_operation_id'] as String,
     ))!;
     if (saved.state == SyncState.synced) {
+      final cached = await db.readCache(
+        user,
+        business,
+        '$path/${saved.serverId}',
+      );
+
+      if (cached?.data is Map) {
+        return Map<String, dynamic>.from(cached!.data as Map);
+      }
+
       return getJson('$path/${saved.serverId}');
     }
     return {...saved.preview, 'local_sync_state': saved.state.name};
@@ -638,20 +661,35 @@ class OfflineClient extends ApiClient {
     };
   }
 
-  Future<void> syncPendingOperations(String business, {bool manual = false}) {
-    _requested[business] = manual || (_requested[business] ?? false);
+  Future<void> syncPendingOperations(
+    String business, {
+    bool manual = false,
+    bool refreshAfter = true,
+  }) {
+    final existing = _requested[business];
+
+    _requested[business] = (
+      manual: manual || (existing?.manual ?? false),
+      refreshAfter: refreshAfter || (existing?.refreshAfter ?? false),
+    );
+
     return _flight ??= _drain().whenComplete(() => _flight = null);
   }
 
   Future<void> _drain() async {
     while (_requested.isNotEmpty) {
       final business = _requested.keys.first;
-      final manual = _requested.remove(business)!;
-      await _sync(business, manual);
+      final request = _requested.remove(business)!;
+
+      await _sync(business, request.manual, refreshAfter: request.refreshAfter);
     }
   }
 
-  Future<void> _sync(String business, bool manual) async {
+  Future<void> _sync(
+    String business,
+    bool manual, {
+    bool refreshAfter = true,
+  }) async {
     String user;
     try {
       user = await account();
@@ -828,7 +866,9 @@ class OfflineClient extends ApiClient {
         changed();
       }
       if (online && await account() == user) {
-        await refreshCore(business);
+        if (refreshAfter) {
+          _scheduleBackgroundRefresh(business);
+        }
         if (!online || await account() != user) return;
         lastSync = DateTime.now().toUtc();
         await db.cache(
@@ -848,6 +888,46 @@ class OfflineClient extends ApiClient {
       syncing = false;
       changed();
     }
+  }
+
+  void _scheduleBackgroundRefresh(String business) {
+    if (_refreshFlight != null) {
+      _queuedRefreshBusiness = _activeRefreshBusiness == business
+          ? null
+          : business;
+      return;
+    }
+
+    _activeRefreshBusiness = business;
+
+    _refreshFlight = () async {
+      String? refreshUser;
+
+      try {
+        refreshUser = await account();
+        await refreshCore(business);
+      } on Object {
+        // Refresh failures must not invalidate confirmed transactions.
+      } finally {
+        _refreshFlight = null;
+        _activeRefreshBusiness = null;
+
+        final nextBusiness = _queuedRefreshBusiness;
+        _queuedRefreshBusiness = null;
+
+        if (nextBusiness != null &&
+            selectedBusiness == nextBusiness &&
+            refreshUser != null) {
+          try {
+            if (await account() == refreshUser) {
+              _scheduleBackgroundRefresh(nextBusiness);
+            }
+          } on Object {
+            // Do not continue a queued refresh after logout.
+          }
+        }
+      }
+    }();
   }
 
   Future<void> refreshCore(String business) async {

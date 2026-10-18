@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:zedbiz/core/offline/offline_client.dart';
 import 'package:zedbiz/core/network/api_exception.dart';
@@ -62,10 +62,29 @@ class AppController extends ChangeNotifier {
           }
         });
       }
+
+      if (monitorConnectivity) {
+        _syncTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+          final lifecycleState = WidgetsBinding.instance.lifecycleState;
+
+          if (lifecycleState != null &&
+              lifecycleState != AppLifecycleState.resumed) {
+            return;
+          }
+
+          final business = selectedBusiness;
+          if (status == SessionStatus.signedIn && business != null) {
+            unawaited(
+              offline!.syncPendingOperations(business.id, refreshAfter: false),
+            );
+          }
+        });
+      }
     }
   }
   final OfflineClient? offline;
   StreamSubscription<List<ConnectivityResult>>? _connectivity;
+  Timer? _syncTimer;
   bool get online => offline?.online ?? true;
   void _offlineChanged() => notifyListeners();
   void _openOfflineBusiness() {
@@ -77,6 +96,7 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _connectivity?.cancel();
     offline?.changes.removeListener(_offlineChanged);
     super.dispose();
