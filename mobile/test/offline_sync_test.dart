@@ -607,7 +607,7 @@ void main() {
     },
   );
   testWidgets(
-    'offline banner, pending count, Sync Status and provisional receipt',
+    'compact offline indicator, pending count, Sync Status and provisional receipt',
     (tester) async {
       final db = LocalDatabase(NativeDatabase.memory());
       await seed(db);
@@ -624,8 +624,29 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Offline — changes will sync later'), findsOneWidget);
-      expect(find.textContaining('1 items waiting'), findsOneWidget);
+      // The compact indicator still communicates the pending operation
+      // and exposes the offline state without using the old full-width banner.
+      expect(find.text('1 pending'), findsOneWidget);
+      expect(
+        find.byTooltip('Offline — changes will sync later'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('1 pending'));
+      await tester.pumpAndSettle();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pumpAndSettle();
+
+      // The full status screen remains accessible and shows the queued sale.
+      expect(find.text('Sync Status'), findsOneWidget);
+      expect(find.text('Working offline'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('Waiting'), findsOneWidget);
+      expect(find.textContaining('Sale • K'), findsOneWidget);
+      expect(find.text('Sync Now'), findsOneWidget);
+
       final receipt = ReceiptData.fromJson(
         await api.getJson(
           '/api/v1/businesses/b/sales/local-pending-sale/receipt',

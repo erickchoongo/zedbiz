@@ -75,8 +75,19 @@ void main() {
     await tester.pumpWidget(ZedBizApp(controller: controller));
     await tester.pumpAndSettle();
 
-    expect(find.text('Brown Tech is ready'), findsOneWidget);
-    await tester.tap(find.byTooltip('Sign out'));
+    expect(find.text('Brown Tech'), findsWidgets);
+
+    // The redesigned UI keeps sign-out in the More tab, not the app bar.
+    await tester.tap(find.text('More'));
+    await tester.pumpAndSettle();
+    // The More menu builds off-screen entries lazily; scroll until Sign out exists.
+    await tester.scrollUntilVisible(
+      find.text('Sign out'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
 
     expect(auth.loggedOut, isTrue);
@@ -114,7 +125,8 @@ void main() {
     await tester.tap(find.text('Green Market'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Green Market is ready'), findsOneWidget);
+    expect(controller.selectedBusiness?.name, 'Green Market');
+    expect(find.text('Green Market'), findsWidgets);
     expect(find.text('MANAGER'), findsOneWidget);
   });
 

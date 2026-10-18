@@ -63,93 +63,170 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: RefreshIndicator(
-      onRefresh: _load,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          TextField(
-            controller: _search,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _load(),
-            decoration: InputDecoration(
-              labelText: 'Search products, SKU or barcode',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: IconButton(
-                onPressed: _load,
-                icon: const Icon(Icons.arrow_forward),
-              ),
-            ),
-          ),
-          if (!widget.writable)
-            const Card(
-              child: ListTile(
-                leading: Icon(Icons.lock_outline),
-                title: Text('Read-only inventory'),
-                subtitle: Text('Renew the subscription to make changes.'),
-              ),
-            ),
-          if (_loading) const LinearProgressIndicator(),
-          if (_error != null)
-            Card(
-              color: Theme.of(context).colorScheme.errorContainer,
-              child: ListTile(
-                title: Text(_error!),
-                trailing: IconButton(
-                  onPressed: _load,
-                  icon: const Icon(Icons.refresh),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Scaffold(
+      backgroundColor: colors.surface,
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 96),
+          children: [
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Products & inventory',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Browse your catalogue and monitor stock levels.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _search,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => _load(),
+                      decoration: InputDecoration(
+                        hintText: 'Search products, SKU or barcode',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: IconButton(
+                          tooltip: 'Search products',
+                          onPressed: _load,
+                          icon: const Icon(Icons.arrow_forward_rounded),
+                        ),
+                        filled: true,
+                        fillColor: colors.surfaceContainerLow,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    if (!widget.writable) ...[
+                      Card(
+                        color: colors.errorContainer,
+                        child: const ListTile(
+                          leading: Icon(Icons.lock_outline),
+                          title: Text('Read-only inventory'),
+                          subtitle: Text(
+                            'Renew the subscription to make changes.',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Catalogue',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (!_loading)
+                          Text(
+                            '${_items.length} shown',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (_loading) ...[
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 12),
+                    ],
+                    if (_error != null) ...[
+                      Card(
+                        color: colors.errorContainer,
+                        child: ListTile(
+                          title: Text(_error!),
+                          trailing: IconButton(
+                            tooltip: 'Retry loading products',
+                            onPressed: _load,
+                            icon: const Icon(Icons.refresh_rounded),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (!_loading && _error == null && _items.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 48,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 48,
+                              color: colors.primary,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No products found',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _search.text.trim().isEmpty
+                                  ? 'Add a product or service to start your catalogue.'
+                                  : 'Try a different product name, SKU or barcode.',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    for (final product in _items) ...[
+                      _ProductCard(
+                        product: product,
+                        onTap: () => _open(product),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
                 ),
               ),
             ),
-          if (!_loading && _error == null && _items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(40),
-              child: Column(
-                children: [
-                  Icon(Icons.inventory_2_outlined, size: 56),
-                  SizedBox(height: 12),
-                  Text('No products yet'),
-                  Text('Add a product or service to start your catalogue.'),
-                ],
-              ),
-            ),
-          ..._items.map(
-            (p) => Card(
-              child: ListTile(
-                onTap: () => _open(p),
-                leading: CircleAvatar(
-                  child: Icon(
-                    p.trackInventory
-                        ? Icons.inventory_2
-                        : Icons.miscellaneous_services,
-                  ),
-                ),
-                title: Text(p.name),
-                subtitle: Text(
-                  '${p.sku ?? 'No SKU'} • ZMW ${p.sellingPrice}${p.trackInventory ? ' • ${p.stockQuantity.display} in stock' : ''}',
-                ),
-                trailing: p.isLowStock
-                    ? const Tooltip(
-                        message: 'Low stock',
-                        child: Icon(Icons.warning_amber, color: Colors.orange),
-                      )
-                    : const Icon(Icons.chevron_right),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-    floatingActionButton: _canEdit
-        ? FloatingActionButton.extended(
-            heroTag: 'add-product-fab',
-            onPressed: _add,
-            icon: const Icon(Icons.add),
-            label: const Text('Add product'),
-          )
-        : null,
-  );
+      floatingActionButton: _canEdit
+          ? FloatingActionButton.extended(
+              heroTag: 'add-product-fab',
+              onPressed: _add,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add product'),
+            )
+          : null,
+    );
+  }
+
   Future<void> _add() async {
     final created = await showDialog<bool>(
       context: context,
@@ -169,6 +246,134 @@ class _ProductsScreenState extends State<ProductsScreen> {
       ),
     );
     _load();
+  }
+}
+
+/// Presentation only: product loading and inventory actions stay unchanged.
+class _ProductCard extends StatelessWidget {
+  const _ProductCard({required this.product, required this.onTap});
+
+  final Product product;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final outOfStock = product.trackInventory &&
+        product.stockQuantity.thousandths == 0;
+    final lowStock = product.trackInventory &&
+        product.isLowStock && !outOfStock;
+
+    final stockLabel = !product.isActive
+        ? 'Inactive'
+        : !product.trackInventory
+            ? 'Service'
+            : outOfStock
+                ? 'Out of stock'
+                : lowStock
+                    ? 'Low stock'
+                    : '${product.stockQuantity.display} in stock';
+
+    final warning = !product.isActive || outOfStock || lowStock;
+    final statusColor = warning ? colors.error : colors.primary;
+    final statusBackground = warning
+        ? colors.errorContainer.withValues(alpha: 0.50)
+        : colors.primaryContainer.withValues(alpha: 0.55);
+
+    return Material(
+      color: colors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  product.trackInventory
+                      ? Icons.inventory_2_outlined
+                      : Icons.miscellaneous_services_outlined,
+                  color: colors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      product.sku == null || product.sku!.isEmpty
+                          ? 'No SKU'
+                          : 'SKU: ${product.sku}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusBackground,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        stockLabel,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: statusColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'K${product.sellingPrice}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

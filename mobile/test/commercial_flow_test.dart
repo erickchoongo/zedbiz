@@ -94,10 +94,19 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('More'));
       await tester.pumpAndSettle();
-      expect(
-        find.text('ZedBiz admin'),
-        isAdmin ? findsOneWidget : findsNothing,
-      );
+
+      if (isAdmin) {
+        // The More menu is scrollable and builds its rows lazily.
+        await tester.scrollUntilVisible(
+          find.text('ZedBiz admin'),
+          200,
+          scrollable: find.byType(Scrollable).last,
+        );
+        expect(find.text('ZedBiz admin'), findsOneWidget);
+      } else {
+        // A non-admin must not be offered the privileged entry.
+        expect(find.text('ZedBiz admin'), findsNothing);
+      }
     }
   });
 
@@ -145,7 +154,15 @@ void main() {
 
     expect(find.text('Your subscription has expired'), findsOneWidget);
     expect(find.textContaining('7-day grace period'), findsOneWidget);
-    expect(find.text('Brown Tech is ready'), findsOneWidget);
+    // The old 'Brown Tech is ready' heading was deliberately removed.
+    // Scroll the lazily built dashboard and confirm New Sale is still available.
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('home-new-sale')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('home-new-sale')), findsOneWidget);
   });
 
   testWidgets('expired subscription presents read-only mode', (tester) async {
@@ -192,7 +209,16 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('ZedBiz admin'));
+
+    // Administrator access currently lives in More.
+    await tester.tap(find.text('More'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('ZedBiz admin'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('ZedBiz admin'));
     await tester.pumpAndSettle();
 
     expect(find.text('ZedBiz Admin'), findsOneWidget);

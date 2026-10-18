@@ -76,147 +76,332 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: RefreshIndicator(
-      onRefresh: () => load(reset: true),
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (!widget.writable)
-            const Card(
-              child: ListTile(
-                leading: Icon(Icons.lock_outline),
-                title: Text('Sales are read-only'),
-                subtitle: Text(
-                  'Historical sales and receipts remain available.',
-                ),
-              ),
-            ),
-          TextField(
-            controller: search,
-            onSubmitted: (_) => load(reset: true),
-            decoration: InputDecoration(
-              labelText: 'Search sale number',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: IconButton(
-                onPressed: () => load(reset: true),
-                icon: const Icon(Icons.arrow_forward),
-              ),
-            ),
-          ),
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('All'),
-                selected: statusFilter == null,
-                onSelected: (_) {
-                  setState(() => statusFilter = null);
-                  load(reset: true);
-                },
-              ),
-              ChoiceChip(
-                label: const Text('Completed'),
-                selected: statusFilter == 'COMPLETED',
-                onSelected: (_) {
-                  setState(() => statusFilter = 'COMPLETED');
-                  load(reset: true);
-                },
-              ),
-              ChoiceChip(
-                label: const Text('Voided'),
-                selected: statusFilter == 'VOIDED',
-                onSelected: (_) {
-                  setState(() => statusFilter = 'VOIDED');
-                  load(reset: true);
-                },
-              ),
-            ],
-          ),
-          if (loading && items.isEmpty) const LinearProgressIndicator(),
-          if (error != null)
-            Card(
-              color: Theme.of(context).colorScheme.errorContainer,
-              child: ListTile(
-                title: Text(error!),
-                trailing: IconButton(
-                  onPressed: () => load(reset: true),
-                  icon: const Icon(Icons.refresh),
-                ),
-              ),
-            ),
-          if (!loading && error == null && items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(36),
-              child: Column(
-                children: [
-                  Icon(Icons.receipt_long_outlined, size: 56),
-                  Text('No sales recorded yet'),
-                  Text('Complete a sale to see it here.'),
-                ],
-              ),
-            ),
-          ...items.map(
-            (sale) => Card(
-              child: ListTile(
-                onTap: () => _detail(sale.id),
-                leading: CircleAvatar(
-                  child: Icon(
-                    sale.status == SaleStatus.voided
-                        ? Icons.block
-                        : Icons.receipt_long,
-                  ),
-                ),
-                title: Text(
-                  '${sale.number}${sale.localSyncState == null ? '' : ' • ${sale.localSyncState!.toUpperCase()}'}',
-                ),
-                subtitle: Text(
-                  '${_date(sale.soldAt)} • ${paymentLabel(sale.paymentMethod)} • ${sale.seller}',
-                ),
-                trailing: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Scaffold(
+      backgroundColor: colors.surface,
+      body: RefreshIndicator(
+        onRefresh: () => load(reset: true),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          children: [
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'K${sale.total.decimal}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    if (sale.status == SaleStatus.voided)
-                      const Text(
-                        'VOIDED',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
+                    if (!widget.writable) ...[
+                      Card(
+                        color: colors.surfaceContainerLow,
+                        child: const ListTile(
+                          leading: Icon(Icons.lock_outline),
+                          title: Text('Sales are read-only'),
+                          subtitle: Text(
+                            'Historical sales and receipts remain available.',
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                    ],
+                    Text(
+                      'Sales history',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Find transactions and review your receipts.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: search,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => load(reset: true),
+                      decoration: InputDecoration(
+                        hintText: 'Search sale number',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: IconButton(
+                          tooltip: 'Search sales',
+                          onPressed: () => load(reset: true),
+                          icon: const Icon(Icons.arrow_forward_rounded),
+                        ),
+                        filled: true,
+                        fillColor: colors.surfaceContainerLow,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('All sales'),
+                          selected: statusFilter == null,
+                          onSelected: (_) {
+                            setState(() => statusFilter = null);
+                            load(reset: true);
+                          },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Completed'),
+                          selected: statusFilter == 'COMPLETED',
+                          onSelected: (_) {
+                            setState(() => statusFilter = 'COMPLETED');
+                            load(reset: true);
+                          },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Voided'),
+                          selected: statusFilter == 'VOIDED',
+                          onSelected: (_) {
+                            setState(() => statusFilter = 'VOIDED');
+                            load(reset: true);
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Transactions',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (!loading && error == null)
+                          Text(
+                            '$total total',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (loading) ...[
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 12),
+                    ],
+                    if (error != null) ...[
+                      Card(
+                        color: colors.errorContainer,
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.error_outline,
+                            color: colors.onErrorContainer,
+                          ),
+                          title: Text(error!),
+                          trailing: IconButton(
+                            tooltip: 'Retry loading sales',
+                            onPressed: () => load(reset: true),
+                            icon: const Icon(Icons.refresh),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (!loading && error == null && items.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 22,
+                          vertical: 40,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.receipt_long_outlined,
+                              color: colors.primary,
+                              size: 44,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No sales recorded yet',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Complete a sale to see it here.',
+                              style: theme.textTheme.bodySmall,
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    for (final sale in items) ...[
+                      Card(
+                        elevation: 0,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        color: colors.surfaceContainerLow,
+                        clipBehavior: Clip.antiAlias,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: InkWell(
+                          onTap: () => _detail(sale.id),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        color: colors.primaryContainer,
+                                        borderRadius: BorderRadius.circular(13),
+                                      ),
+                                      child: Icon(
+                                        sale.status == SaleStatus.voided
+                                            ? Icons.block_outlined
+                                            : Icons.receipt_long_outlined,
+                                        color: sale.status == SaleStatus.voided
+                                            ? colors.error
+                                            : colors.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            sale.number,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.titleSmall
+                                                ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            _date(sale.soldAt),
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: colors.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          'K${sale.total.decimal}',
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          sale.status == SaleStatus.voided
+                                              ? 'VOIDED'
+                                              : sale.localSyncState == null
+                                                  ? sale.status.name.toUpperCase()
+                                                  : sale.localSyncState!
+                                                      .toUpperCase(),
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                            color: sale.status ==
+                                                    SaleStatus.voided
+                                                ? colors.error
+                                                : sale.localSyncState != null
+                                                    ? colors.tertiary
+                                                    : colors.primary,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 13),
+                                Divider(
+                                  height: 1,
+                                  color: colors.outlineVariant,
+                                ),
+                                const SizedBox(height: 11),
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 6,
+                                  children: [
+                                    _SaleMeta(
+                                      icon: Icons.payments_outlined,
+                                      label: paymentLabel(sale.paymentMethod),
+                                    ),
+                                    _SaleMeta(
+                                      icon: Icons.person_outline_rounded,
+                                      label: sale.seller,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (items.length < total) ...[
+                      const SizedBox(height: 8),
+                      Center(
+                        child: OutlinedButton.icon(
+                          onPressed: loading
+                              ? null
+                              : () {
+                                  page++;
+                                  load();
+                                },
+                          icon: const Icon(Icons.expand_more_rounded),
+                          label: const Text('Load more'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
-          ),
-          if (items.length < total)
-            OutlinedButton(
-              onPressed: loading
-                  ? null
-                  : () {
-                      page++;
-                      load();
-                    },
-              child: const Text('Load more'),
-            ),
-        ],
+          ],
+        ),
       ),
-    ),
-    floatingActionButton: widget.writable
-        ? FloatingActionButton.extended(
-            heroTag: 'new-sale-fab',
-            key: const Key('new-sale'),
-            onPressed: _newSale,
-            icon: const Icon(Icons.point_of_sale),
-            label: const Text('NEW SALE'),
-          )
-        : null,
-  );
+      floatingActionButton: widget.writable
+          ? FloatingActionButton.extended(
+              heroTag: 'new-sale-fab',
+              key: const Key('new-sale'),
+              onPressed: _newSale,
+              icon: const Icon(Icons.point_of_sale),
+              label: const Text('NEW SALE'),
+            )
+          : null,
+    );
+  }
+
   Future<void> _newSale() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -243,6 +428,31 @@ class _SalesScreenState extends State<SalesScreen> {
   String _date(DateTime value) {
     final z = value.toUtc().add(const Duration(hours: 2));
     return '${z.day.toString().padLeft(2, '0')}/${z.month.toString().padLeft(2, '0')}/${z.year} ${z.hour.toString().padLeft(2, '0')}:${z.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+class _SaleMeta extends StatelessWidget {
+  const _SaleMeta({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: colors.onSurfaceVariant),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
   }
 }
 
