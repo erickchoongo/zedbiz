@@ -26,7 +26,12 @@ void main() {
       find.byKey(const Key('login-password')),
       'wrong-password',
     );
-    await tester.tap(find.byKey(const Key('login-submit')));
+
+    // The redesigned sign-in form can extend below the test viewport.
+    final signInButton = find.byKey(const Key('login-submit'));
+    await tester.ensureVisible(signInButton);
+    await tester.pumpAndSettle();
+    await tester.tap(signInButton);
     await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -49,10 +54,18 @@ void main() {
     );
     await tester.pumpWidget(ZedBizApp(controller: controller));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('New to ZedBiz? Create an account'));
+
+    // Bring the registration link into view before tapping it.
+    final createAccountLink = find.text('New to ZedBiz? Create an account');
+    await tester.ensureVisible(createAccountLink);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('register-submit')));
-    await tester.tap(find.byKey(const Key('register-submit')));
+    await tester.tap(createAccountLink);
+    await tester.pumpAndSettle();
+
+    final registerButton = find.byKey(const Key('register-submit'));
+    await tester.ensureVisible(registerButton);
+    await tester.pumpAndSettle();
+    await tester.tap(registerButton);
     await tester.pump();
 
     expect(find.text('Enter your full name'), findsOneWidget);
@@ -157,3 +170,4 @@ void main() {
     },
   );
 }
+
