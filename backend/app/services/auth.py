@@ -68,7 +68,11 @@ class AuthService:
         if user is None:
             verify_password(password, _DUMMY_PASSWORD_HASH)
             raise AuthenticationError
-        if not verify_password(password, user.password_hash) or not user.is_active:
+        if (
+            not verify_password(password, user.password_hash)
+            or not user.is_active
+            or user.suspended_at is not None
+        ):
             raise AuthenticationError
         try:
             bundle = self._issue_token_bundle(user)
@@ -95,6 +99,7 @@ class AuthService:
             or refresh_session.revoked_at is not None
             or ensure_utc(refresh_session.expires_at) <= now
             or not refresh_session.user.is_active
+            or refresh_session.user.suspended_at is not None
         ):
             raise AuthenticationError
         refresh_session.revoked_at = now

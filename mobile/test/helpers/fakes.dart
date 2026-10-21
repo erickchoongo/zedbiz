@@ -151,6 +151,61 @@ class FakeCommercialGateway implements CommercialGateway {
 }
 
 class FakeAdminGateway implements AdminGateway {
+    @override
+  Future<Map<String, dynamic>> businessAccess(String businessId) async => {
+    'id': businessId,
+    'is_active': true,
+    'suspended_at': null,
+    'suspension_reason': null,
+    'suspended_by_user_id': null,
+  };
+
+  @override
+  Future<Map<String, dynamic>> changeBusinessAccess(
+    String businessId, {
+    required bool suspend,
+    String? reason,
+  }) async => {
+    'id': businessId,
+    'is_active': true,
+    'suspended_at': suspend ? DateTime.now().toUtc().toIso8601String() : null,
+    'suspension_reason': suspend ? reason : null,
+  };
+
+  @override
+  Future<List<Map<String, dynamic>>> listAccessUsers({String? email}) async =>
+      [];
+
+  @override
+  Future<Map<String, dynamic>> changeUserAccess(
+    String userId, {
+    required bool suspend,
+    String? reason,
+  }) async => {
+    'id': userId,
+    'is_active': true,
+    'suspended_at': suspend ? DateTime.now().toUtc().toIso8601String() : null,
+    'suspension_reason': suspend ? reason : null,
+  };
+
+  @override
+  Future<List<Map<String, dynamic>>> listAccessMemberships(
+    String businessId,
+  ) async => [];
+
+  @override
+  Future<Map<String, dynamic>> changeMembershipAccess(
+    String businessId,
+    String userId, {
+    required bool suspend,
+    String? reason,
+  }) async => {
+    'user_id': userId,
+    'business_id': businessId,
+    'is_active': true,
+    'suspended_at': suspend ? DateTime.now().toUtc().toIso8601String() : null,
+    'suspension_reason': suspend ? reason : null,
+  };
   List<AdminBusiness> businesses = const [];
 
   @override

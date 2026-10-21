@@ -28,7 +28,7 @@ def get_current_user(
     except ValueError as exc:
         raise unauthorized from exc
     user = UserRepository(db).get_by_id(claims.user_id)
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.suspended_at is not None:
         raise unauthorized
     return user
 

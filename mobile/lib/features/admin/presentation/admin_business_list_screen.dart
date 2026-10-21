@@ -3,6 +3,7 @@ import 'package:zedbiz/app/app_controller.dart';
 import 'package:zedbiz/core/network/api_exception.dart';
 import 'package:zedbiz/features/admin/domain/admin_business.dart';
 import 'package:zedbiz/features/admin/presentation/admin_commercial_detail_screen.dart';
+import 'package:zedbiz/features/admin/presentation/admin_access_screen.dart';
 
 class AdminBusinessListScreen extends StatefulWidget {
   const AdminBusinessListScreen({required this.controller, super.key});
@@ -107,6 +108,13 @@ class _AdminBusinessListScreenState extends State<AdminBusinessListScreen> {
           icon: const Icon(Icons.arrow_back),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Account access management',
+            icon: const Icon(Icons.admin_panel_settings_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => AdminAccessScreen(controller: widget.controller)),
+            ),
+          ),
           IconButton(
             onPressed: _loading ? null : _load,
             icon: const Icon(Icons.refresh),

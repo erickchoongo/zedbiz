@@ -30,7 +30,9 @@ class OfflineClient extends ApiClient {
   DateTime? lastCacheRead, lastSync;
   String? selectedBusiness;
   void Function(List<Map<String, dynamic>>)? membershipsVerified;
+  void Function()? sessionInvalidated;
   Future<void>? _flight;
+  Future<void>? _accessFlight;
   Future<void>? _refreshFlight;
   String? _queuedRefreshBusiness;
   String? _activeRefreshBusiness;
@@ -38,6 +40,53 @@ class OfflineClient extends ApiClient {
   String? _catalogBusiness;
   final Map<String, ({bool manual, bool refreshAfter})> _requested = {};
   void changed() => changes.value++;
+
+  Future<void> verifySessionAccess() => _accessFlight ??= _verifySessionAccess()
+      .whenComplete(() => _accessFlight = null);
+
+  Future<void> _verifySessionAccess() async {
+    String? user;
+    try {
+      user = await account();
+      final identity = await super.getJson('/api/v1/auth/me');
+      if (await account() != user) return;
+      await db.cache(user, '', '/api/v1/auth/me', identity);
+      online = true;
+      await getJsonList('/api/v1/businesses');
+    } on ApiException catch (error) {
+      if (user != null && error.statusCode == 401) {
+        await _invalidateSession(user);
+      }
+    } on Object {
+      // Network loss cannot establish revocation. Cached access remains bounded.
+    }
+  }
+
+  Future<void> _invalidateSession(String user) async {
+    await tokenStorage.clear();
+    await db.clearAccountCache(user);
+    sessionRequired = true;
+    selectedBusiness = null;
+    sessionInvalidated?.call();
+    changed();
+  }
+
+  Future<void> _requireOfflineAccess(String user, String business) async {
+    final identity = await db.readCache(user, '', '/api/v1/auth/me');
+    final member = business.isEmpty
+        ? identity
+        : await db.readCache(user, business, '/api/v1/businesses/$business');
+    final now = DateTime.now().toUtc();
+    for (final record in [identity, member]) {
+      if (record == null ||
+          now.isBefore(record.updatedAt) ||
+          now.difference(record.updatedAt) > authorizationValidity) {
+        throw const ApiException(
+          'Connect to the internet to verify your account access.',
+        );
+      }
+    }
+  }
 
   Future<String> account() async {
     final tokens = await tokenStorage.read();
@@ -83,6 +132,7 @@ class OfflineClient extends ApiClient {
     final user = await account();
     final business = businessOf(path);
     if (!online && cacheable(path)) {
+      await _requireOfflineAccess(user, business);
       final cached = await db.readCache(user, business, path);
       if (cached != null) {
         lastCacheRead = cached.updatedAt;
@@ -105,12 +155,17 @@ class OfflineClient extends ApiClient {
       return data;
     } on Object catch (e) {
       if (!transient(e)) {
+        if (e is SessionExpiredException ||
+            (e is ApiException && e.statusCode == 401)) {
+          await _invalidateSession(user);
+        }
         if (e is ApiException && [401, 403, 404].contains(e.statusCode)) {
           if (business.isNotEmpty) await db.clearBusinessCache(user, business);
         }
         rethrow;
       }
       online = false;
+      await _requireOfflineAccess(user, business);
       final cached = cacheable(path)
           ? await db.readCache(user, business, path)
           : null;
@@ -133,6 +188,10 @@ class OfflineClient extends ApiClient {
         (await _read(path, () => super.getJsonList(path))) as List<dynamic>;
     if (path == '/api/v1/businesses' && online) {
       final user = await account();
+      await db.retainBusinessCaches(
+        user,
+        result.map((b) => b['id'] as String).toList(),
+      );
       for (final b in result.cast<Map<String, dynamic>>()) {
         final key = '/api/v1/businesses/${b['id']}';
         final previous = await db.readCache(user, b['id'] as String, key);
@@ -162,6 +221,7 @@ class OfflineClient extends ApiClient {
     if (parts.length >= 6 &&
         ['sales', 'expenses'].contains(parts[4]) &&
         parts[5].startsWith('local-')) {
+      await _requireOfflineAccess(user, business);
       final op = await db.operation(user, business, parts[5].substring(6));
       if (op == null) throw const ApiException('Local transaction not found.');
       if (op.payloadVersion != 1 ||
@@ -188,6 +248,7 @@ class OfflineClient extends ApiClient {
           (uri.queryParameters['page'] ?? '1') != '1') {
         rethrow;
       }
+      await _requireOfflineAccess(user, business);
       final type = parts[4] == 'sales'
           ? OperationType.createSale
           : OperationType.createExpense;
@@ -285,6 +346,7 @@ class OfflineClient extends ApiClient {
       online = false;
     }
     final cache = await db.readCache(user, business, 'catalog');
+    if (!online) await _requireOfflineAccess(user, business);
     if (cache == null) {
       throw const ApiException('Connect to the internet to load products.');
     }
@@ -352,6 +414,7 @@ class OfflineClient extends ApiClient {
     OperationType type,
     Map<String, dynamic> payload,
   ) async {
+    await _requireOfflineAccess(user, business);
     final member = await db.readCache(
       user,
       business,
@@ -705,7 +768,8 @@ class OfflineClient extends ApiClient {
     changed();
     try {
       if (manual || !online) {
-        await super.getJson('/api/v1/auth/me');
+        final identity = await super.getJson('/api/v1/auth/me');
+        await db.cache(user, '', '/api/v1/auth/me', identity);
         online = true;
         sessionRequired = false;
       }
@@ -759,6 +823,7 @@ class OfflineClient extends ApiClient {
           online = true;
         } on Object catch (e) {
           if (e is ApiException && e.statusCode == 401) {
+            await _invalidateSession(user);
             sessionRequired = true;
             await db.transition(
               op,
@@ -880,7 +945,7 @@ class OfflineClient extends ApiClient {
         await db.prune(user, business);
       }
     } on SessionExpiredException {
-      sessionRequired = true;
+      await _invalidateSession(user);
     } on Object catch (e) {
       if (transient(e)) online = false;
     } finally {

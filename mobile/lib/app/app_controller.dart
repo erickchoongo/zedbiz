@@ -37,12 +37,18 @@ class AppController extends ChangeNotifier {
   }) {
     offline?.changes.addListener(_offlineChanged);
     if (offline != null) {
+      offline!.sessionInvalidated = () {
+        _clearAuthenticatedState();
+        notifyListeners();
+      };
       offline!.membershipsVerified = (records) {
         businesses = records.map(BusinessSummary.fromJson).toList();
         final selected = selectedBusiness;
         if (selected != null) {
           final matches = businesses.where((b) => b.id == selected.id);
           selectedBusiness = matches.isEmpty ? null : matches.single;
+          offline!.selectedBusiness = selectedBusiness?.id;
+          if (selectedBusiness == null) commercialStatus = null;
         }
         notifyListeners();
       };
@@ -73,6 +79,9 @@ class AppController extends ChangeNotifier {
           }
 
           final business = selectedBusiness;
+          if (status == SessionStatus.signedIn) {
+            unawaited(offline!.verifySessionAccess());
+          }
           if (status == SessionStatus.signedIn && business != null) {
             unawaited(
               offline!.syncPendingOperations(business.id, refreshAfter: false),
@@ -99,6 +108,8 @@ class AppController extends ChangeNotifier {
     _syncTimer?.cancel();
     _connectivity?.cancel();
     offline?.changes.removeListener(_offlineChanged);
+    offline?.sessionInvalidated = null;
+    offline?.membershipsVerified = null;
     super.dispose();
   }
 
