@@ -33,8 +33,10 @@ def get_business_access(
         .where(
             Business.id == business_id,
             Business.is_active.is_(True),
+            Business.suspended_at.is_(None),
             BusinessMembership.user_id == current_user.id,
             BusinessMembership.is_active.is_(True),
+            BusinessMembership.suspended_at.is_(None),
         )
     ).one_or_none()
     if row is None:

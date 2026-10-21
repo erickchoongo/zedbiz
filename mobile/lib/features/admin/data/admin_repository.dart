@@ -7,6 +7,13 @@ abstract interface class AdminGateway {
     String? onboardingStatus,
     String? subscriptionStatus,
   });
+  // Platform access controls (independent of subscriptions).
+  Future<Map<String, dynamic>> businessAccess(String businessId);
+  Future<Map<String, dynamic>> changeBusinessAccess(String businessId, {required bool suspend, String? reason});
+  Future<List<Map<String, dynamic>>> listAccessUsers({String? email});
+  Future<Map<String, dynamic>> changeUserAccess(String userId, {required bool suspend, String? reason});
+  Future<List<Map<String, dynamic>>> listAccessMemberships(String businessId);
+  Future<Map<String, dynamic>> changeMembershipAccess(String businessId, String userId, {required bool suspend, String? reason});
   Future<Map<String, dynamic>> commercialDetail(String businessId);
   Future<void> updateOnboarding(String businessId, Map<String, dynamic> update);
   Future<void> activate(
@@ -113,4 +120,38 @@ class AdminRepository implements AdminGateway {
       {'payment_method': method, 'payment_reference': reference},
     );
   }
+  static const _access = '/api/v1/admin/access';
+
+  @override
+  Future<Map<String, dynamic>> businessAccess(String businessId) =>
+      apiClient.getJson('$_access/businesses/$businessId/access');
+
+  @override
+  Future<Map<String, dynamic>> changeBusinessAccess(String businessId, {required bool suspend, String? reason}) =>
+      apiClient.postJson('$_access/businesses/$businessId/${suspend ? 'suspend' : 'reactivate'}',
+          suspend ? {'reason': reason} : <String, dynamic>{});
+
+  @override
+  Future<List<Map<String, dynamic>>> listAccessUsers({String? email}) async {
+    final query = email == null || email.trim().isEmpty ? '' : '?${Uri(queryParameters: {'email': email.trim()}).query}';
+    final rows = await apiClient.getJsonList('$_access/users$query');
+    return rows.map((row) => Map<String, dynamic>.from(row as Map)).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> changeUserAccess(String userId, {required bool suspend, String? reason}) =>
+      apiClient.postJson('$_access/users/$userId/${suspend ? 'suspend' : 'reactivate'}',
+          suspend ? {'reason': reason} : <String, dynamic>{});
+
+  @override
+  Future<List<Map<String, dynamic>>> listAccessMemberships(String businessId) async {
+    final rows = await apiClient.getJsonList('$_access/businesses/$businessId/memberships');
+    return rows.map((row) => Map<String, dynamic>.from(row as Map)).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> changeMembershipAccess(String businessId, String userId, {required bool suspend, String? reason}) =>
+      apiClient.postJson('$_access/businesses/$businessId/memberships/$userId/${suspend ? 'suspend' : 'reactivate'}',
+          suspend ? {'reason': reason} : <String, dynamic>{});
+
 }

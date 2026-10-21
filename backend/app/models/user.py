@@ -1,6 +1,7 @@
+from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, String, UniqueConstraint, Uuid
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -21,6 +22,9 @@ class User(TimestampMixin, Base):
     full_name: Mapped[str] = mapped_column(String(160), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    suspension_reason: Mapped[str | None] = mapped_column(Text)
+    suspended_by_user_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("users.id", ondelete="SET NULL"))
 
-    memberships = relationship("BusinessMembership", back_populates="user", cascade="all, delete-orphan")
+    memberships = relationship("BusinessMembership", back_populates="user", cascade="all, delete-orphan", foreign_keys="BusinessMembership.user_id")
     refresh_sessions = relationship("RefreshSession", back_populates="user", cascade="all, delete-orphan")

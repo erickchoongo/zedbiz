@@ -26,7 +26,9 @@ class BusinessRepository:
             .where(
                 BusinessMembership.user_id == user_id,
                 BusinessMembership.is_active.is_(True),
+                BusinessMembership.suspended_at.is_(None),
                 Business.is_active.is_(True),
+                Business.suspended_at.is_(None),
             )
             .order_by(Business.name, Business.id)
         ).all()

@@ -50,6 +50,7 @@ void main() {
     () async {
       final db = LocalDatabase(NativeDatabase.memory());
       addTearDown(db.close);
+      await fixture.seed(db);
       final pages = <int>[];
       final api = OfflineClient(
         baseUrl: Uri.parse('http://test'),
@@ -204,7 +205,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(
-        find.text('Sale saved on this device — waiting to sync.'),
+        find.text('Sale saved on this device \u2014 waiting to sync.'),
         findsOneWidget,
       );
       expect((await db.operations('u', 'b')).length, 1);

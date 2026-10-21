@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:zedbiz/app/app_controller.dart';
 import 'package:zedbiz/core/network/api_exception.dart';
 import 'package:zedbiz/features/admin/domain/admin_business.dart';
+import 'package:zedbiz/features/admin/presentation/admin_access_screen.dart';
 
 class AdminCommercialDetailScreen extends StatefulWidget {
   const AdminCommercialDetailScreen({
@@ -276,6 +277,16 @@ class _AdminCommercialDetailScreenState
       appBar: AppBar(
         title: Text(widget.business.name),
         actions: [
+          IconButton(
+            tooltip: 'Manage account access',
+            icon: const Icon(Icons.lock_person_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => AdminAccessScreen(
+                controller: widget.controller, initialBusinessId: widget.business.id,
+                initialBusinessName: widget.business.name,
+              )),
+            ),
+          ),
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
       ),

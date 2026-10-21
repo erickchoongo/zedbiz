@@ -5,6 +5,7 @@ from app.api.v1.routes.auth import router as auth_router
 from app.api.v1.routes.businesses import router as businesses_router
 from app.api.v1.routes.commercial import router as commercial_router
 from app.api.v1.routes.admin import router as admin_router
+from app.api.v1.routes.admin_access import router as admin_access_router
 from app.api.v1.routes.products import router as products_router
 from app.api.v1.routes.inventory import router as inventory_router
 from app.api.v1.routes.sales import router as sales_router
@@ -19,6 +20,7 @@ api_router.include_router(auth_router, prefix="/auth", tags=["authentication"])
 api_router.include_router(businesses_router, prefix="/businesses", tags=["businesses"])
 api_router.include_router(commercial_router, prefix="/businesses", tags=["commercial"])
 api_router.include_router(admin_router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_access_router, prefix="/admin/access", tags=["admin access"])
 api_router.include_router(products_router, prefix="/businesses/{business_id}/products", tags=["products"])
 api_router.include_router(inventory_router, prefix="/businesses/{business_id}/inventory", tags=["inventory"])
 api_router.include_router(sales_router, prefix="/businesses/{business_id}/sales", tags=["sales"])

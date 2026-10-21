@@ -1,6 +1,7 @@
+from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, String, Uuid
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import DEFAULT_BUSINESS_CURRENCY, DEFAULT_BUSINESS_TIMEZONE
@@ -19,6 +20,9 @@ class Business(TimestampMixin, Base):
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default=DEFAULT_BUSINESS_CURRENCY, server_default=DEFAULT_BUSINESS_CURRENCY)
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default=DEFAULT_BUSINESS_TIMEZONE, server_default=DEFAULT_BUSINESS_TIMEZONE)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    suspension_reason: Mapped[str | None] = mapped_column(Text)
+    suspended_by_user_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("users.id", ondelete="SET NULL"))
 
     memberships = relationship("BusinessMembership", back_populates="business", cascade="all, delete-orphan")
     onboarding_record = relationship(

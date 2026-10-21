@@ -159,6 +159,19 @@ class LocalDatabase extends GeneratedDatabase {
         [user, business],
       );
 
+  /// Cached authorization/data can be revoked without deleting queued writes.
+  Future<void> clearAccountCache(String user) =>
+      customStatement('DELETE FROM cached_reads WHERE user_id=?', [user]);
+
+  Future<void> retainBusinessCaches(
+    String user,
+    List<String> businesses,
+  ) => customStatement(
+    "DELETE FROM cached_reads WHERE user_id=? AND business_id<>''"
+    '${businesses.isEmpty ? '' : ' AND business_id NOT IN (${List.filled(businesses.length, '?').join(',')})'}',
+    [user, ...businesses],
+  );
+
   Future<void> enqueue(
     String user,
     String business,

@@ -39,6 +39,8 @@ If `origin` already exists, inspect it instead of adding/replacing it blindly. A
 
 ## B. Create Supabase and prepare PostgreSQL
 
+If the schema is already migrated as `postgres`, stop before the fresh-role commands below. Use the [existing-schema handoff review](supabase-existing-schema-handoff-review.md) and its read-only catalog inspection first. The proposed handoff is guarded and is not yet approved for execution; default grants alone do not cover already-created objects.
+
 ### Create a dedicated database project
 
 1. Sign in to Supabase, create/select a Free organization and choose **New project**. Select a region near the future Render service. Save the strong generated project database password in your password manager.
